@@ -493,11 +493,6 @@ let calMonth = new Date().getMonth();
 let selectedDate = null;
 const PAGE_SIZE = 100;
 let listPage = 0;
-let baselineSnapshot = null;
-
-function snapshotState(){
-  return JSON.stringify({ entries, sessions });
-}
 
 const viewAdd = document.getElementById('viewAdd');
 const viewList = document.getElementById('viewList');
@@ -646,13 +641,6 @@ function exportData(){
 
 document.getElementById('btnExport').onclick = () => exportData();
 
-window.addEventListener('beforeunload', () => {
-  try{
-    if(baselineSnapshot !== null && snapshotState() === baselineSnapshot) return;
-    exportData();
-  }catch(e){ /* 브라우저가 종료 중 다운로드를 막을 수 있음 */ }
-});
-
 document.getElementById('btnImport').onclick = () => {
   document.getElementById('fileImport').click();
 };
@@ -778,7 +766,6 @@ async function applyImport(freshList, conflicts){
   });
   await saveEntries();
   renderList();
-  baselineSnapshot = snapshotState();
 }
 
 function showDictChoice(han){
@@ -1212,7 +1199,6 @@ function renderCalDetail(daySessions){
 (async () => {
   await loadEntries();
   await loadSessions();
-  baselineSnapshot = snapshotState();
 })();
 </script>
 </body>
