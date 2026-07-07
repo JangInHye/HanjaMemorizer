@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>한자 암기장</title>
+<style>
+  :root{
+    --paper:#f5f1e8;
+    --ink:#2b2620;
+    --ink-soft:#6b6255;
+    --seal:#a8362a;
+    --line:#d8d0bd;
+    --card:#fffdf8;
+    --good:#3f6b4a;
+    --bad:#a8362a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Serif KR","Nanum Myeongjo",serif;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:32px 20px 60px;
+  }
+  header{
+    text-align:center;
+    margin-bottom:24px;
+  }
+  header h1{
+    font-size:28px;
+    letter-spacing:2px;
+    margin:0 0 4px;
+  }
+  header .sub{
+    color:var(--ink-soft);
+    font-size:13px;
+    letter-spacing:1px;
+  }
+  .seal{
+    display:inline-block;
+    width:34px;height:34px;
+    line-height:34px;
+    background:var(--seal);
+    color:#fff;
+    border-radius:4px;
+    font-size:16px;
+    margin-bottom:8px;
+  }
+  nav{
+    display:flex;
+    gap:8px;
+    margin-bottom:20px;
+    border-bottom:1px solid var(--line);
+  }
+  nav button{
+    flex:1;
+    background:none;
+    border:none;
+    padding:12px 0;
+    font-family:inherit;
+    font-size:15px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    transition:.15s;
+  }
+  nav button.active{
+    color:var(--ink);
+    border-bottom-color:var(--seal);
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .field{
+    margin-bottom:12px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+    letter-spacing:.5px;
+  }
+  .field input{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:16px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .field input:focus{
+    outline:none;
+    border-color:var(--seal);
+  }
+  .row2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  button.primary{
+    width:100%;
+    padding:12px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:4px;
+    font-family:inherit;
+    font-size:15px;
+    letter-spacing:1px;
+    cursor:pointer;
+  }
+  button.primary:hover{opacity:.88;}
+  button.ghost{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    padding:6px 10px;
+    border-radius:4px;
+    font-family:inherit;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .entry{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .entry:last-child{border-bottom:none;}
+  .entry .han{
+    font-size:26px;
+    width:44px;
+    text-align:center;
+  }
+  .entry .info{
+    flex:1;
+    padding:0 12px;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .entry .info .meaning{
+    color:var(--ink);
+    font-size:14px;
+  }
+  .empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:20px 0;
+  }
+  /* test mode */
+  .test-progress{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+    letter-spacing:1px;
+  }
+  .prompt{
+    text-align:center;
+    padding:30px 10px;
+  }
+  .prompt .meaning{
+    font-size:24px;
+    margin-bottom:6px;
+  }
+  .prompt .hint{
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .canvas-wrap{
+    display:flex;
+    justify-content:center;
+    margin:16px 0 8px;
+  }
+  #drawCanvas{
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:#fff;
+    touch-action:none;
+    cursor:crosshair;
+  }
+  .canvas-actions{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:12px;
+  }
+  .reveal-han{
+    text-align:center;
+    font-size:48px;
+    color:var(--seal);
+    margin:10px 0;
+  }
+  .self-grade{
+    display:flex;
+    gap:10px;
+  }
+  .self-grade button{
+    flex:1;
+  }
+  button.bad-btn{
+    background:none;
+    border:1px solid var(--bad);
+    color:var(--bad);
+  }
+  button.good-btn{
+    background:none;
+    border:1px solid var(--good);
+    color:var(--good);
+  }
+  .feedback{
+    text-align:center;
+    font-size:14px;
+    height:20px;
+    margin-bottom:8px;
+  }
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .result-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .result-item:last-child{border-bottom:none;}
+  .result-item .mark{
+    width:22px;
+    font-size:16px;
+  }
+  .result-item .mark.good{color:var(--good);}
+  .result-item .mark.bad{color:var(--bad);}
+  .result-item .han-answer{
+    width:40px;
+    height:40px;
+    border:1px solid var(--line);
+    border-radius:4px;
+  }
+  .result-item .detail{
+    flex:1;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .result-item .correct-han{
+    font-size:22px;
+    color:var(--seal);
+    width:36px;
+    text-align:center;
+  }
+  .summary{
+    text-align:center;
+    padding:16px 0 24px;
+  }
+  .summary .score{
+    font-size:40px;
+    color:var(--seal);
+  }
+  .summary .score span{
+    font-size:20px;
+    color:var(--ink-soft);
+  }
+  .msg{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:16px 0;
+  }
+  .version-tag{
+    position:fixed;
+    right:12px;
+    bottom:10px;
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:.5px;
+  }
+  .pager{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding-top:12px;
+    margin-top:8px;
+  }
+  .pager-label{
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .pager button:disabled{
+    opacity:.4;
+    cursor:default;
+  }
+  /* calendar */
+  .cal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .cal-header .cal-title{
+    font-size:16px;
+    letter-spacing:1px;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:4px;
+    text-align:center;
+  }
+  .cal-dow{
+    font-size:11px;
+    color:var(--ink-soft);
+    padding:4px 0;
+  }
+  .cal-day{
+    position:relative;
+    aspect-ratio:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border-radius:4px;
+    font-size:13px;
+    cursor:default;
+  }
+  .cal-day.has-session{
+    cursor:pointer;
+    background:#f0e9d8;
+  }
+  .cal-day.has-session:hover{
+    background:#e6dcc4;
+  }
+  .cal-day.selected{
+    outline:2px solid var(--seal);
+  }
+  .cal-day .rate{
+    font-size:9px;
+    color:var(--seal);
+  }
+  .cal-day.empty{visibility:hidden;}
+  .cal-detail{
+    margin-top:16px;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+  .cal-detail .cal-detail-title{
+    font-size:14px;
+    margin-bottom:8px;
+  }
+  .cal-session{
+    margin-bottom:10px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .cal-session:last-child{border-bottom:none;}
+  .cal-session .cal-session-summary{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .cal-item-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    padding:3px 0;
+  }
+  .cal-item-row .mark{width:16px;}
+  .cal-item-row .han{font-size:16px;width:22px;text-align:center;}
+  /* import conflict */
+  .conflict{
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .conflict:last-child{border-bottom:none;}
+  .conflict .conflict-han{
+    font-size:20px;
+    margin-bottom:8px;
+  }
+  .conflict-options{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .conflict-option{
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:8px;
+    font-size:12px;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .conflict-option .label{
+    font-size:11px;
+    letter-spacing:.5px;
+    margin-bottom:4px;
+  }
+  .conflict-option.selected{
+    border-color:var(--seal);
+    color:var(--ink);
+    background:#fbf3ea;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>한자 암기장</h1>
+    <div class="sub">오류 및 개선 사항 요청은 Discord - 냉면#6848 로 연락 부탁드립니다.</div>
+  </header>
+
+  <nav>
+    <button id="tabAdd" class="active">단어 등록</button>
+    <button id="tabList">단어 목록</button>
+    <button id="tabTest">시험</button>
+    <button id="tabCalendar">달력</button>
+  </nav>
+
+  <div id="viewAdd">
+    <div class="card">
+      <div class="field">
+        <label>한자</label>
+        <input id="inHan" maxlength="4" placeholder="예: 山">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>훈독</label>
+          <input id="inKun" placeholder="예: やま">
+        </div>
+        <div class="field">
+          <label>음독</label>
+          <input id="inOn" placeholder="예: さん">
+        </div>
+      </div>
+      <div class="field">
+        <label>뜻</label>
+        <input id="inMeaning" placeholder="예: 뫼 산, 산 산">
+      </div>
+      <button class="primary" id="btnSave">저장</button>
+    </div>
+    <div id="saveMsg" class="msg"></div>
+  </div>
+
+  <div id="viewList" style="display:none">
+    <div class="card">
+      <div class="row2">
+        <button class="ghost" id="btnExport">내보내기</button>
+        <button class="ghost" id="btnImport">가져오기</button>
+      </div>
+      <input type="file" id="fileImport" accept=".json" style="display:none">
+    </div>
+    <div id="conflictCard"></div>
+    <div class="card" id="listCard">
+      <div class="empty">등록된 한자가 없습니다.</div>
+    </div>
+  </div>
+
+  <div id="viewTest" style="display:none">
+    <div class="card" id="testCard"></div>
+    <button class="ghost" id="btnShowExcluded" style="width:100%">제외한 단어 목록 보기</button>
+  </div>
+
+  <div id="viewCalendar" style="display:none">
+    <div class="card" id="calendarCard"></div>
+  </div>
+</div>
+<div class="version-tag">ver.1.2</div>
+
+<script>
+const STORAGE_KEY = 'hanjaEntries';
+const SESSIONS_KEY = 'hanjaTestSessions';
+let entries = [];
+let testQueue = [];
+let testIndex = 0;
+let testResults = [];
+let sessions = [];
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let selectedDate = null;
+const PAGE_SIZE = 100;
+let listPage = 0;
+let baselineSnapshot = null;
+
+function snapshotState(){
+  return JSON.stringify({ entries, sessions });
+}
+
+const viewAdd = document.getElementById('viewAdd');
+const viewList = document.getElementById('viewList');
+const viewTest = document.getElementById('viewTest');
+const viewCalendar = document.getElementById('viewCalendar');
+const tabAdd = document.getElementById('tabAdd');
+const tabList = document.getElementById('tabList');
+const tabTest = document.getElementById('tabTest');
+const tabCalendar = document.getElementById('tabCalendar');
+
+function setTab(name){
+  [tabAdd, tabList, tabTest, tabCalendar].forEach(b => b.classList.remove('active'));
+  viewAdd.style.display = 'none';
+  viewList.style.display = 'none';
+  viewTest.style.display = 'none';
+  viewCalendar.style.display = 'none';
+  if(name === 'add'){ tabAdd.classList.add('active'); viewAdd.style.display = 'block'; }
+  if(name === 'list'){ tabList.classList.add('active'); viewList.style.display = 'block'; renderList(); }
+  if(name === 'test'){ tabTest.classList.add('active'); viewTest.style.display = 'block'; startTest(); }
+  if(name === 'calendar'){ tabCalendar.classList.add('active'); viewCalendar.style.display = 'block'; selectedDate = null; renderCalendar(); }
+}
+tabAdd.onclick = () => setTab('add');
+tabList.onclick = () => setTab('list');
+tabTest.onclick = () => setTab('test');
+tabCalendar.onclick = () => setTab('calendar');
+document.getElementById('btnShowExcluded').onclick = () => showExcludedList();
+
+function showExcludedList(){
+  const excluded = entries.filter(e => e.excluded);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+
+  const listHtml = excluded.length === 0
+    ? '<div class="empty">제외한 단어가 없습니다.</div>'
+    : excluded.map(e => `
+        <div class="entry">
+          <div class="han">${e.han}</div>
+          <div class="info">
+            <div class="meaning">${e.meaning}</div>
+            <div>훈독: ${e.kun || '-'} · 음독: ${e.on || '-'}</div>
+          </div>
+          <button class="ghost" data-release="${e.id}">해제</button>
+        </div>
+      `).join('');
+
+  overlay.innerHTML = `
+    <div class="card" style="max-width:400px;width:100%;max-height:70vh;overflow-y:auto;">
+      <div class="msg" style="padding:0 0 10px">제외한 단어 목록</div>
+      ${listHtml}
+      <button class="primary" id="excludedClose" style="margin-top:12px">닫기</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('button[data-release]').forEach(btn => {
+    btn.onclick = async () => {
+      const entry = entries.find(e => e.id === btn.dataset.release);
+      if(entry) entry.excluded = false;
+      await saveEntries();
+      overlay.remove();
+      showExcludedList();
+    };
+  });
+  overlay.querySelector('#excludedClose').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+}
+
+async function loadEntries(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    entries = [];
+  }
+}
+
+async function saveEntries(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }catch(e){
+    console.error('저장 실패', e);
+  }
+}
+
+async function loadSessions(){
+  try{
+    const raw = localStorage.getItem(SESSIONS_KEY);
+    sessions = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    sessions = [];
+  }
+}
+
+async function saveSessions(){
+  try{
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  }catch(e){
+    console.error('저장 실패', e);
+  }
+}
+
+function todayKey(){
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+document.getElementById('btnSave').onclick = async () => {
+  const han = document.getElementById('inHan').value.trim();
+  const on = document.getElementById('inOn').value.trim();
+  const kun = document.getElementById('inKun').value.trim();
+  const meaning = document.getElementById('inMeaning').value.trim();
+  const msg = document.getElementById('saveMsg');
+
+  if(!han || !meaning){
+    msg.textContent = '한자와 뜻은 필수 입력입니다.';
+    return;
+  }
+
+  entries.push({ id: Date.now().toString(), han, on, kun, meaning });
+  await saveEntries();
+
+  document.getElementById('inHan').value = '';
+  document.getElementById('inOn').value = '';
+  document.getElementById('inKun').value = '';
+  document.getElementById('inMeaning').value = '';
+  msg.textContent = `'${han}' 저장 완료`;
+  setTimeout(() => msg.textContent = '', 1500);
+};
+
+function exportData(){
+  const payload = { entries, sessions };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `hanja_backup_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btnExport').onclick = () => exportData();
+
+window.addEventListener('beforeunload', () => {
+  try{
+    if(baselineSnapshot !== null && snapshotState() === baselineSnapshot) return;
+    exportData();
+  }catch(e){ /* 브라우저가 종료 중 다운로드를 막을 수 있음 */ }
+});
+
+document.getElementById('btnImport').onclick = () => {
+  document.getElementById('fileImport').click();
+};
+
+document.getElementById('fileImport').onchange = async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const imported = JSON.parse(text);
+
+    let importedEntries = [];
+    let importedSessions = [];
+    if(Array.isArray(imported)){
+      importedEntries = imported;
+    } else if(imported && typeof imported === 'object'){
+      importedEntries = Array.isArray(imported.entries) ? imported.entries : [];
+      importedSessions = Array.isArray(imported.sessions) ? imported.sessions : [];
+    } else {
+      throw new Error('형식 오류');
+    }
+
+    if(importedSessions.length > 0) await mergeSessions(importedSessions);
+    processImport(importedEntries);
+  }catch(err){
+    alert('파일을 읽을 수 없습니다. JSON 형식을 확인해주세요.');
+  }
+  e.target.value = '';
+};
+
+async function mergeSessions(importedSessions){
+  importedSessions.forEach(s => {
+    const dup = sessions.some(existing => JSON.stringify(existing) === JSON.stringify(s));
+    if(!dup) sessions.push(s);
+  });
+  await saveSessions();
+}
+
+function processImport(importedList){
+  const freshList = [];
+  const conflicts = [];
+  importedList.forEach(imp => {
+    if(!imp.han || !imp.meaning) return;
+    const existingIndex = entries.findIndex(e => e.han === imp.han);
+    if(existingIndex >= 0){
+      conflicts.push({ existingIndex, existing: entries[existingIndex], imported: imp, choice: 'existing' });
+    } else {
+      freshList.push(imp);
+    }
+  });
+
+  if(conflicts.length === 0){
+    applyImport(freshList, []);
+    return;
+  }
+  renderConflictUI(freshList, conflicts);
+}
+
+function renderConflictUI(freshList, conflicts){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+  overlay.innerHTML = `
+    <div class="card" style="max-width:400px;width:100%;max-height:80vh;overflow-y:auto;">
+      <div class="msg" style="padding:0 0 12px">중복된 한자 ${conflicts.length}건 발견 · 사용할 데이터를 선택하세요</div>
+      ${conflicts.map((c, i) => `
+        <div class="conflict">
+          <div class="conflict-han">${c.existing.han}</div>
+          <div class="conflict-options">
+            <div class="conflict-option selected" data-idx="${i}" data-choice="existing">
+              <div class="label">기존 데이터</div>
+              <div>훈독: ${c.existing.kun || '-'} · 음독: ${c.existing.on || '-'}</div>
+              <div>뜻: ${c.existing.meaning}</div>
+            </div>
+            <div class="conflict-option" data-idx="${i}" data-choice="imported">
+              <div class="label">가져온 데이터</div>
+              <div>훈독: ${c.imported.kun || '-'} · 음독: ${c.imported.on || '-'}</div>
+              <div>뜻: ${c.imported.meaning}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+      <button class="primary" id="btnApplyImport" style="margin-top:14px">적용</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('.conflict-option').forEach(el => {
+    el.onclick = () => {
+      const idx = Number(el.dataset.idx);
+      conflicts[idx].choice = el.dataset.choice;
+      overlay.querySelectorAll(`.conflict-option[data-idx="${idx}"]`).forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+    };
+  });
+
+  overlay.querySelector('#btnApplyImport').onclick = () => {
+    applyImport(freshList, conflicts);
+    overlay.remove();
+  };
+}
+
+async function applyImport(freshList, conflicts){
+  freshList.forEach(imp => {
+    entries.push({
+      id: Date.now().toString() + Math.random().toString(36).slice(2),
+      han: imp.han,
+      on: imp.on || '',
+      kun: imp.kun || '',
+      meaning: imp.meaning || '',
+      excluded: !!imp.excluded
+    });
+  });
+  conflicts.forEach(c => {
+    if(c.choice === 'imported'){
+      entries[c.existingIndex] = {
+        ...entries[c.existingIndex],
+        on: c.imported.on || '',
+        kun: c.imported.kun || '',
+        meaning: c.imported.meaning || '',
+        excluded: !!c.imported.excluded
+      };
+    }
+  });
+  await saveEntries();
+  renderList();
+  baselineSnapshot = snapshotState();
+}
+
+function showDictChoice(han){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;';
+  overlay.innerHTML = `
+    <div class="card" style="max-width:280px;text-align:center;">
+      <div style="margin-bottom:14px;font-size:15px;">'${han}' 어느 언어의 한자인가요?</div>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost" id="dictKo" style="flex:1;">한국어</button>
+        <button class="ghost" id="dictJa" style="flex:1;">일본어</button>
+        <button class="ghost" id="dictZh" style="flex:1;">중국어</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#dictJa').onclick = () => {
+    window.open(`https://ja.dict.naver.com/#/search?query=${encodeURIComponent(han)}`, '_blank');
+    overlay.remove();
+  };
+  overlay.querySelector('#dictKo').onclick = () => {
+    window.open(`https://hanja.dict.naver.com/#/search?query=${encodeURIComponent(han)}&range=all`, '_blank');
+    overlay.remove();
+  };
+  overlay.querySelector('#dictZh').onclick = () => {
+    window.open(`https://zh.dict.naver.com/#/search?query=${encodeURIComponent(han)}`, '_blank');
+    overlay.remove();
+  };
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+}
+
+function renderList(){
+  const card = document.getElementById('listCard');
+  if(entries.length === 0){
+    card.innerHTML = '<div class="empty">등록된 한자가 없습니다.</div>';
+    return;
+  }
+
+  const totalPages = Math.ceil(entries.length / PAGE_SIZE);
+  if(listPage >= totalPages) listPage = totalPages - 1;
+  if(listPage < 0) listPage = 0;
+
+  const start = listPage * PAGE_SIZE;
+  const pageEntries = entries.slice(start, start + PAGE_SIZE);
+
+  const rowsHtml = pageEntries.map(e => `
+    <div class="entry">
+      <div class="han">${e.han}</div>
+      <div class="info">
+        <div class="meaning">${e.meaning}</div>
+        <div>훈독: ${e.kun || '-'} · 음독: ${e.on || '-'}</div>
+      </div>
+      <button class="ghost" data-dict="${e.han}">사전 검색</button>
+      <button class="ghost" data-edit="${e.id}">수정</button>
+      <button class="ghost" data-id="${e.id}">삭제</button>
+    </div>
+  `).join('');
+
+  const pagerHtml = totalPages > 1 ? `
+    <div class="pager">
+      <button class="ghost" id="pagePrev" ${listPage === 0 ? 'disabled' : ''}>‹ 이전</button>
+      <span class="pager-label">${listPage + 1} / ${totalPages} 페이지 (총 ${entries.length}개)</span>
+      <button class="ghost" id="pageNext" ${listPage >= totalPages - 1 ? 'disabled' : ''}>다음 ›</button>
+    </div>
+  ` : '';
+
+  card.innerHTML = rowsHtml + pagerHtml;
+
+  card.querySelectorAll('button[data-dict]').forEach(btn => {
+    btn.onclick = () => showDictChoice(btn.dataset.dict);
+  });
+  card.querySelectorAll('button[data-edit]').forEach(btn => {
+    btn.onclick = () => showEditEntry(btn.dataset.edit);
+  });
+  card.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.onclick = async () => {
+      entries = entries.filter(e => e.id !== btn.dataset.id);
+      await saveEntries();
+      renderList();
+    };
+  });
+
+  if(totalPages > 1){
+    document.getElementById('pagePrev').onclick = () => { listPage--; renderList(); };
+    document.getElementById('pageNext').onclick = () => { listPage++; renderList(); };
+  }
+}
+
+function showEditEntry(id){
+  const entry = entries.find(e => e.id === id);
+  if(!entry) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+  overlay.innerHTML = `
+    <div class="card" style="max-width:340px;width:100%;">
+      <div class="field">
+        <label>한자</label>
+        <input id="editHan" maxlength="4" value="${entry.han}">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>훈독</label>
+          <input id="editKun" value="${entry.kun || ''}">
+        </div>
+        <div class="field">
+          <label>음독</label>
+          <input id="editOn" value="${entry.on || ''}">
+        </div>
+      </div>
+      <div class="field">
+        <label>뜻</label>
+        <input id="editMeaning" value="${entry.meaning}">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost" id="editCancel" style="flex:1;">취소</button>
+        <button class="primary" id="editSave" style="flex:1;">저장</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#editCancel').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+  overlay.querySelector('#editSave').onclick = async () => {
+    const han = document.getElementById('editHan').value.trim();
+    const kun = document.getElementById('editKun').value.trim();
+    const on = document.getElementById('editOn').value.trim();
+    const meaning = document.getElementById('editMeaning').value.trim();
+    if(!han || !meaning) return;
+
+    entry.han = han;
+    entry.kun = kun;
+    entry.on = on;
+    entry.meaning = meaning;
+    await saveEntries();
+    overlay.remove();
+    renderList();
+  };
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startTest(){
+  const card = document.getElementById('testCard');
+  const available = entries.filter(e => !e.excluded);
+  if(available.length === 0){
+    card.innerHTML = '<div class="empty">시험할 한자가 없습니다.<br>먼저 단어를 등록해 주세요.</div>';
+    return;
+  }
+  testQueue = shuffle(available);
+  testIndex = 0;
+  testResults = [];
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const card = document.getElementById('testCard');
+  const total = testQueue.length;
+
+  if(testIndex >= total){
+    renderReport();
+    return;
+  }
+
+  const item = testQueue[testIndex];
+  card.innerHTML = `
+    <div class="test-progress">${testIndex + 1} / ${total}</div>
+    <div class="prompt">
+      <div class="meaning">${item.meaning}</div>
+      <div class="hint" style="margin-bottom:8px">훈독: ${item.kun || '-'} · 음독: ${item.on || '-'}</div>
+      <div class="hint">이 뜻에 해당하는 한자를 적으세요.</div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="drawCanvas" width="220" height="220"></canvas>
+    </div>
+    <div class="canvas-actions">
+      <button class="ghost" id="btnClear">지우기</button>
+      <button class="ghost" id="btnExclude">시험에서 제외하기</button>
+    </div>
+    <button class="primary" id="btnReveal">정답 확인</button>
+  `;
+
+  setupCanvas(document.getElementById('drawCanvas'));
+  document.getElementById('btnClear').onclick = () => clearCanvas();
+  document.getElementById('btnReveal').onclick = () => revealAnswer(item);
+  document.getElementById('btnExclude').onclick = async () => {
+    const ok = confirm(`'${item.han}'을(를) 앞으로 시험에 나오지 않게 할까요?`);
+    if(!ok) return;
+    item.excluded = true;
+    await saveEntries();
+    testQueue.splice(testIndex, 1);
+    renderQuestion();
+  };
+}
+
+let canvasCtx = null;
+let drawing = false;
+
+function setupCanvas(canvas){
+  canvasCtx = canvas.getContext('2d');
+  canvasCtx.lineWidth = 6;
+  canvasCtx.lineCap = 'round';
+  canvasCtx.strokeStyle = '#2b2620';
+  clearCanvas();
+
+  function pos(e){
+    const rect = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+  }
+  function start(e){
+    e.preventDefault();
+    drawing = true;
+    const p = pos(e);
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(p.x, p.y);
+  }
+  function move(e){
+    if(!drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    canvasCtx.lineTo(p.x, p.y);
+    canvasCtx.stroke();
+  }
+  function end(){ drawing = false; }
+
+  canvas.onmousedown = start;
+  canvas.onmousemove = move;
+  canvas.onmouseup = end;
+  canvas.onmouseleave = end;
+  canvas.ontouchstart = start;
+  canvas.ontouchmove = move;
+  canvas.ontouchend = end;
+}
+
+function clearCanvas(){
+  if(!canvasCtx) return;
+  const { width, height } = canvasCtx.canvas;
+  canvasCtx.fillStyle = '#fff';
+  canvasCtx.fillRect(0, 0, width, height);
+  canvasCtx.save();
+  canvasCtx.strokeStyle = '#c9c0ac';
+  canvasCtx.lineWidth = 1;
+  canvasCtx.setLineDash([4, 4]);
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(width / 2, 0);
+  canvasCtx.lineTo(width / 2, height);
+  canvasCtx.moveTo(0, height / 2);
+  canvasCtx.lineTo(width, height / 2);
+  canvasCtx.stroke();
+  canvasCtx.restore();
+}
+
+function revealAnswer(item){
+  const card = document.getElementById('testCard');
+  const drawingImage = canvasCtx.canvas.toDataURL();
+  const total = testQueue.length;
+
+  card.innerHTML = `
+    <div class="test-progress">${testIndex + 1} / ${total}</div>
+    <div class="canvas-wrap">
+      <canvas id="reviewCanvas" width="220" height="220"></canvas>
+    </div>
+    <div class="reveal-han">${item.han}</div>
+    <div class="hint" style="text-align:center;margin-bottom:12px">직접 그린 한자가 정답과 맞았나요?</div>
+    <div class="self-grade">
+      <button class="bad-btn" id="btnWrong">틀렸어요</button>
+      <button class="good-btn" id="btnRight">맞았어요</button>
+    </div>
+  `;
+
+  const reviewCanvas = document.getElementById('reviewCanvas');
+  const reviewCtx = reviewCanvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => reviewCtx.drawImage(img, 0, 0);
+  img.src = drawingImage;
+
+  function grade(correct){
+    testResults.push({ item, drawingImage, correct });
+    testIndex++;
+    renderQuestion();
+  }
+  document.getElementById('btnRight').onclick = () => grade(true);
+  document.getElementById('btnWrong').onclick = () => grade(false);
+}
+
+function renderReport(){
+  const card = document.getElementById('testCard');
+  const total = testResults.length;
+  const correctCount = testResults.filter(r => r.correct).length;
+
+  sessions.push({
+    date: todayKey(),
+    total,
+    correct: correctCount,
+    items: testResults.map(r => ({
+      han: r.item.han,
+      meaning: r.item.meaning,
+      correct: r.correct
+    }))
+  });
+  saveSessions();
+
+  const rows = testResults.map(r => `
+    <div class="result-item">
+      <div class="mark ${r.correct ? 'good' : 'bad'}">${r.correct ? '○' : '✕'}</div>
+      <img class="han-answer" src="${r.drawingImage}">
+      <div class="detail">${r.item.meaning} (훈독: ${r.item.kun || '-'} · 음독: ${r.item.on || '-'})</div>
+      ${r.correct ? '' : `<div class="correct-han">${r.item.han}</div>`}
+    </div>
+  `).join('');
+
+  card.innerHTML = `
+    <div class="summary">
+      <div class="score">${correctCount}<span>/${total}</span></div>
+    </div>
+    ${rows}
+    <button class="primary" id="btnRetry" style="margin-top:16px">다시 시험</button>
+  `;
+  document.getElementById('btnRetry').onclick = startTest;
+}
+
+function renderCalendar(){
+  const card = document.getElementById('calendarCard');
+  const first = new Date(calYear, calMonth, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const byDate = {};
+  sessions.forEach(s => {
+    if(!byDate[s.date]) byDate[s.date] = [];
+    byDate[s.date].push(s);
+  });
+
+  const dows = ['일', '월', '화', '수', '목', '금', '토'];
+  let cells = '';
+  for(let i = 0; i < startDow; i++){
+    cells += `<div class="cal-day empty"></div>`;
+  }
+  for(let d = 1; d <= daysInMonth; d++){
+    const mm = String(calMonth + 1).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    const dateKey = `${calYear}-${mm}-${dd}`;
+    const daySessions = byDate[dateKey];
+    let rateHtml = '';
+    let hasClass = '';
+    if(daySessions){
+      hasClass = 'has-session';
+      const dTotal = daySessions.reduce((sum, s) => sum + s.total, 0);
+      const dCorrect = daySessions.reduce((sum, s) => sum + s.correct, 0);
+      const rate = dTotal > 0 ? Math.round((dCorrect / dTotal) * 100) : 0;
+      rateHtml = `<div class="rate">${rate}%</div>`;
+    }
+    const selClass = selectedDate === dateKey ? 'selected' : '';
+    cells += `<div class="cal-day ${hasClass} ${selClass}" data-date="${dateKey}">${d}${rateHtml}</div>`;
+  }
+
+  card.innerHTML = `
+    <div class="cal-header">
+      <button class="ghost" id="calPrev">‹ 이전</button>
+      <div class="cal-title">${calYear}년 ${calMonth + 1}월</div>
+      <button class="ghost" id="calNext">다음 ›</button>
+    </div>
+    <div class="cal-grid">
+      ${dows.map(d => `<div class="cal-dow">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    <div id="calDetail"></div>
+  `;
+
+  document.getElementById('calPrev').onclick = () => {
+    calMonth--;
+    if(calMonth < 0){ calMonth = 11; calYear--; }
+    renderCalendar();
+  };
+  document.getElementById('calNext').onclick = () => {
+    calMonth++;
+    if(calMonth > 11){ calMonth = 0; calYear++; }
+    renderCalendar();
+  };
+  card.querySelectorAll('.cal-day.has-session').forEach(el => {
+    el.onclick = () => {
+      selectedDate = el.dataset.date;
+      renderCalendar();
+      renderCalDetail(byDate[selectedDate]);
+    };
+  });
+
+  if(selectedDate && byDate[selectedDate]){
+    renderCalDetail(byDate[selectedDate]);
+  }
+}
+
+function renderCalDetail(daySessions){
+  const detail = document.getElementById('calDetail');
+  if(!detail || !daySessions) return;
+
+  const html = daySessions.map((s, idx) => {
+    const rate = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+    const itemRows = s.items.map(it => `
+      <div class="cal-item-row">
+        <div class="mark ${it.correct ? 'good' : 'bad'}" style="color:${it.correct ? 'var(--good)' : 'var(--bad)'}">${it.correct ? '○' : '✕'}</div>
+        <div class="han">${it.han}</div>
+        <div>${it.meaning}</div>
+      </div>
+    `).join('');
+    return `
+      <div class="cal-session">
+        <div class="cal-session-summary">${idx + 1}회차 · ${s.correct}/${s.total} 정답 (${rate}%)</div>
+        ${itemRows}
+      </div>
+    `;
+  }).join('');
+
+  detail.innerHTML = `
+    <div class="cal-detail">
+      <div class="cal-detail-title">${selectedDate} 상세</div>
+      ${html}
+    </div>
+  `;
+}
+
+(async () => {
+  await loadEntries();
+  await loadSessions();
+  baselineSnapshot = snapshotState();
+})();
+</script>
+</body>
+</html>
