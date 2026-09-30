@@ -504,7 +504,12 @@
     <button class="ghost" id="btnLogout" style="display:none">로그아웃</button>
   </div>
 
-  <div class="kind-switch">
+  <div class="kind-switch" id="langSwitch">
+    <button data-lang="ja">일본어</button>
+    <button data-lang="zh">중국어</button>
+  </div>
+
+  <div class="kind-switch" id="kindSwitch">
     <button data-kind="hanja">한자</button>
     <button data-kind="word">단어</button>
   </div>
@@ -526,14 +531,18 @@
         </div>
       </div>
       <div id="searchResult"></div>
-      <div class="dict-credit">사전 데이터: libhangul · KANJIDIC2 (EDRDG, CC BY-SA 4.0)</div>
+      <div class="dict-credit" id="dictCredit">사전 데이터: libhangul · KANJIDIC2 (EDRDG, CC BY-SA 4.0)</div>
     </div>
     <div class="card">
       <div class="field">
         <label>한자</label>
         <input id="inHan" maxlength="4" placeholder="예: 山">
       </div>
-      <div class="row2">
+      <div class="field" id="pinyinRow" style="display:none">
+        <label>병음</label>
+        <input id="inPinyin" placeholder="예: shān">
+      </div>
+      <div class="row2" id="jaReadRow">
         <div class="field">
           <label>훈독</label>
           <input id="inKun" placeholder="예: やま">
@@ -585,7 +594,7 @@
         </div>
       </div>
       <div id="wordSearchResult"></div>
-      <div class="dict-credit">사전 데이터: JMdict (EDRDG, CC BY-SA 4.0)</div>
+      <div class="dict-credit" id="wordDictCredit">사전 데이터: JMdict (EDRDG, CC BY-SA 4.0)</div>
     </div>
     <div class="card">
       <div class="field">
@@ -593,7 +602,7 @@
         <input id="inWord" placeholder="예: 山登り">
       </div>
       <div class="field">
-        <label>읽는 법</label>
+        <label id="readingLabel">읽는 법</label>
         <input id="inReading" placeholder="예: やまのぼり">
       </div>
       <div class="field">
@@ -623,7 +632,7 @@
 <div class="policy-links">
   <a href="privacy.html" target="_blank">개인정보처리방침</a> ｜ <a href="terms.html" target="_blank">서비스 약관</a>
 </div>
-<div class="version-tag">ver.1.4</div>
+<div class="version-tag">ver.1.5</div>
 
 <script>
 const STORAGE_KEY = 'hanjaEntries';
@@ -680,7 +689,7 @@ tabCalendar.onclick = () => setTab('calendar');
 document.getElementById('btnShowExcluded').onclick = () => showExcludedList();
 
 function showExcludedList(){
-  const excluded = entries.filter(e => e.excluded);
+  const excluded = Mine(entries).filter(e => e.excluded);
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
 
@@ -691,7 +700,7 @@ function showExcludedList(){
           <div class="han">${e.han}</div>
           <div class="info">
             <div class="meaning">${e.meaning}</div>
-            <div>훈독: ${e.kun || '-'} · 음독: ${e.on || '-'}</div>
+            <div>${ReadText(e)}</div>
           </div>
           <button class="ghost" data-release="${e.id}">해제</button>
         </div>
@@ -766,6 +775,7 @@ document.getElementById('btnSave').onclick = async () => {
   const han = document.getElementById('inHan').value.trim();
   const on = document.getElementById('inOn').value.trim();
   const kun = document.getElementById('inKun').value.trim();
+  const pinyin = document.getElementById('inPinyin').value.trim();
   const meaning = document.getElementById('inMeaning').value.trim();
   const msg = document.getElementById('saveMsg');
 
@@ -774,12 +784,14 @@ document.getElementById('btnSave').onclick = async () => {
     return;
   }
 
-  entries.push({ id: Date.now().toString(), han, on, kun, meaning });
+  const zh = _lang === 'zh';
+  entries.push({ id: NewId(), lang: _lang, han, on: zh ? '' : on, kun: zh ? '' : kun, pinyin: zh ? pinyin : '', meaning });
   await saveEntries();
 
   document.getElementById('inHan').value = '';
   document.getElementById('inOn').value = '';
   document.getElementById('inKun').value = '';
+  document.getElementById('inPinyin').value = '';
   document.getElementById('inMeaning').value = '';
   msg.textContent = `'${han}' 저장 완료`;
   setTimeout(() => msg.textContent = '', 1500);
@@ -848,7 +860,7 @@ function processImport(importedList){
   const conflicts = [];
   importedList.forEach(imp => {
     if(!imp.han || !imp.meaning) return;
-    const existingIndex = entries.findIndex(e => e.han === imp.han);
+    const existingIndex = entries.findIndex(e => e.han === imp.han && LangOf(e) === LangOf(imp));
     if(existingIndex >= 0){
       if(!IsSameEntry(entries[existingIndex], imp)){
         conflicts.push({ existingIndex, existing: entries[existingIndex], imported: imp, choice: 'existing' });
@@ -877,12 +889,12 @@ function renderConflictUI(freshList, conflicts){
           <div class="conflict-options">
             <div class="conflict-option selected" data-idx="${i}" data-choice="existing">
               <div class="label">기존 데이터</div>
-              <div>훈독: ${c.existing.kun || '-'} · 음독: ${c.existing.on || '-'}</div>
+              <div>${ReadText(c.existing)}</div>
               <div>뜻: ${c.existing.meaning}</div>
             </div>
             <div class="conflict-option" data-idx="${i}" data-choice="imported">
               <div class="label">가져온 데이터</div>
-              <div>훈독: ${c.imported.kun || '-'} · 음독: ${c.imported.on || '-'}</div>
+              <div>${ReadText(c.imported)}</div>
               <div>뜻: ${c.imported.meaning}</div>
             </div>
           </div>
@@ -915,6 +927,8 @@ async function applyImport(freshList, conflicts){
       han: imp.han,
       on: imp.on || '',
       kun: imp.kun || '',
+      pinyin: imp.pinyin || '',
+      lang: LangOf(imp),
       meaning: imp.meaning || '',
       excluded: !!imp.excluded
     });
@@ -925,6 +939,7 @@ async function applyImport(freshList, conflicts){
         ...entries[c.existingIndex],
         on: c.imported.on || '',
         kun: c.imported.kun || '',
+        pinyin: c.imported.pinyin || '',
         meaning: c.imported.meaning || '',
         excluded: !!c.imported.excluded
       };
@@ -941,6 +956,7 @@ async function applyImport(freshList, conflicts){
 function IsSameEntry(a, b){
   return (a.on || '') === (b.on || '')
     && (a.kun || '') === (b.kun || '')
+    && (a.pinyin || '') === (b.pinyin || '')
     && a.meaning === b.meaning
     && !!a.excluded === !!b.excluded;
 }
@@ -976,24 +992,25 @@ function showDictChoice(han){
 
 function renderList(){
   const card = document.getElementById('listCard');
-  if(entries.length === 0){
+  const list = Mine(entries);
+  if(list.length === 0){
     card.innerHTML = '<div class="empty">등록된 한자가 없습니다.</div>';
     return;
   }
 
-  const totalPages = Math.ceil(entries.length / PAGE_SIZE);
+  const totalPages = Math.ceil(list.length / PAGE_SIZE);
   if(listPage >= totalPages) listPage = totalPages - 1;
   if(listPage < 0) listPage = 0;
 
   const start = listPage * PAGE_SIZE;
-  const pageEntries = entries.slice(start, start + PAGE_SIZE);
+  const pageEntries = list.slice(start, start + PAGE_SIZE);
 
   const rowsHtml = pageEntries.map(e => `
     <div class="entry">
       <div class="han">${e.han}</div>
       <div class="info">
         <div class="meaning">${e.meaning}</div>
-        <div>훈독: ${e.kun || '-'} · 음독: ${e.on || '-'}</div>
+        <div>${ReadText(e)}</div>
       </div>
       <button class="ghost" data-dict="${e.han}">사전 검색</button>
       <button class="ghost" data-edit="${e.id}">수정</button>
@@ -1004,7 +1021,7 @@ function renderList(){
   const pagerHtml = totalPages > 1 ? `
     <div class="pager">
       <button class="ghost" id="pagePrev" ${listPage === 0 ? 'disabled' : ''}>‹ 이전</button>
-      <span class="pager-label">${listPage + 1} / ${totalPages} 페이지 (총 ${entries.length}개)</span>
+      <span class="pager-label">${listPage + 1} / ${totalPages} 페이지 (총 ${list.length}개)</span>
       <button class="ghost" id="pageNext" ${listPage >= totalPages - 1 ? 'disabled' : ''}>다음 ›</button>
     </div>
   ` : '';
@@ -1012,7 +1029,7 @@ function renderList(){
   card.innerHTML = rowsHtml + pagerHtml;
 
   card.querySelectorAll('button[data-dict]').forEach(btn => {
-    btn.onclick = () => showDictChoice(btn.dataset.dict);
+    btn.onclick = () => _lang === 'zh' ? OpenNaver('zh', btn.dataset.dict) : showDictChoice(btn.dataset.dict);
   });
   card.querySelectorAll('button[data-edit]').forEach(btn => {
     btn.onclick = () => showEditEntry(btn.dataset.edit);
@@ -1043,6 +1060,11 @@ function showEditEntry(id){
         <label>한자</label>
         <input id="editHan" maxlength="4" value="${entry.han}">
       </div>
+      ${LangOf(entry) === 'zh' ? `
+      <div class="field">
+        <label>병음</label>
+        <input id="editPinyin" value="${Esc(entry.pinyin)}">
+      </div>` : `
       <div class="row2">
         <div class="field">
           <label>훈독</label>
@@ -1052,7 +1074,7 @@ function showEditEntry(id){
           <label>음독</label>
           <input id="editOn" value="${entry.on || ''}">
         </div>
-      </div>
+      </div>`}
       <div class="field">
         <label>뜻</label>
         <input id="editMeaning" value="${entry.meaning}">
@@ -1069,14 +1091,16 @@ function showEditEntry(id){
   overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
   overlay.querySelector('#editSave').onclick = async () => {
     const han = document.getElementById('editHan').value.trim();
-    const kun = document.getElementById('editKun').value.trim();
-    const on = document.getElementById('editOn').value.trim();
+    const kun = InputVal('editKun');
+    const on = InputVal('editOn');
+    const pinyin = InputVal('editPinyin');
     const meaning = document.getElementById('editMeaning').value.trim();
     if(!han || !meaning) return;
 
     entry.han = han;
     entry.kun = kun;
     entry.on = on;
+    entry.pinyin = pinyin;
     entry.meaning = meaning;
     await saveEntries();
     overlay.remove();
@@ -1095,7 +1119,7 @@ function shuffle(arr){
 
 function startTest(){
   const card = document.getElementById('testCard');
-  const available = entries.filter(e => !e.excluded);
+  const available = Mine(entries).filter(e => !e.excluded);
   if(available.length === 0){
     card.innerHTML = '<div class="empty">시험할 한자가 없습니다.<br>먼저 단어를 등록해 주세요.</div>';
     return;
@@ -1120,7 +1144,7 @@ function renderQuestion(){
     <div class="test-progress">${testIndex + 1} / ${total}</div>
     <div class="prompt">
       <div class="meaning">${item.meaning}</div>
-      <div class="hint" style="margin-bottom:8px">훈독: ${item.kun || '-'} · 음독: ${item.on || '-'}</div>
+      <div class="hint" style="margin-bottom:8px">${ReadText(item)}</div>
       <div class="hint">이 뜻에 해당하는 한자를 적으세요.</div>
     </div>
     <div class="canvas-wrap">
@@ -1244,6 +1268,7 @@ function renderReport(){
 
   sessions.push({
     date: todayKey(),
+    lang: _lang,
     total,
     correct: correctCount,
     items: testResults.map(r => ({
@@ -1258,7 +1283,7 @@ function renderReport(){
     <div class="result-item">
       <div class="mark ${r.correct ? 'good' : 'bad'}">${r.correct ? '○' : '✕'}</div>
       <img class="han-answer" src="${r.drawingImage}">
-      <div class="detail">${r.item.meaning} (훈독: ${r.item.kun || '-'} · 음독: ${r.item.on || '-'})</div>
+      <div class="detail">${r.item.meaning} (${ReadText(r.item)})</div>
       ${r.correct ? '' : `<div class="correct-han">${r.item.han}</div>`}
     </div>
   `).join('');
@@ -1280,7 +1305,7 @@ function renderCalendar(){
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
   const byDate = {};
-  sessions.forEach(s => {
+  Mine(sessions).forEach(s => {
     if(!byDate[s.date]) byDate[s.date] = [];
     byDate[s.date].push(s);
   });
@@ -1378,6 +1403,28 @@ const WORDS_KEY = 'hanjaWords';
 const _kindKey = 'hanjaKind';
 let words = [];
 let _kind = localStorage.getItem(_kindKey) === 'word' ? 'word' : 'hanja';
+const _langKey = 'hanjaLang';
+let _lang = localStorage.getItem(_langKey) === 'zh' ? 'zh' : 'ja';
+const _langText = {
+  ja: {
+    search: '예: 뫼 산 · 산 · 山 · やま',
+    credit: '사전 데이터: libhangul · KANJIDIC2 (EDRDG, CC BY-SA 4.0)',
+    wordSearch: '예: 山登り · やまのぼり · climbing',
+    wordCredit: '사전 데이터: JMdict (EDRDG, CC BY-SA 4.0)',
+    word: '예: 山登り',
+    reading: '예: やまのぼり',
+    koHint: '일본어(한자·가나)나 영어로 검색해 주세요.'
+  },
+  zh: {
+    search: '예: 뫼 산 · 산 · 山 · shān',
+    credit: '사전 데이터: libhangul · Unihan (Unicode)',
+    wordSearch: '예: 登山 · dengshan · climbing',
+    wordCredit: '사전 데이터: CC-CEDICT (MDBG, CC BY-SA 4.0)',
+    word: '예: 登山',
+    reading: '예: dēng shān',
+    koHint: '중국어(한자·병음)나 영어로 검색해 주세요.'
+  }
+};
 let _tab = 'add';
 let _wordPage = 0;
 let _wordMode = 'w2m'; // w2m: 단어 → 뜻, m2w: 뜻 → 단어
@@ -1401,6 +1448,34 @@ async function SaveWords(){
   }catch(e){
     console.error('저장 실패', e);
   }
+}
+
+// lang 없는 기존 데이터는 일본어
+function LangOf(x){
+  return x.lang === 'zh' ? 'zh' : 'ja';
+}
+
+function Mine(list){
+  return list.filter(x => LangOf(x) === _lang);
+}
+
+function ReadLabel(x){
+  return LangOf(x) === 'zh' ? '병음' : '읽는 법';
+}
+
+function ReadText(e){
+  return LangOf(e) === 'zh'
+    ? `병음: ${e.pinyin || '-'}`
+    : `훈독: ${e.kun || '-'} · 음독: ${e.on || '-'}`;
+}
+
+function InputVal(id){
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function OpenNaver(lang, query){
+  window.open(`https://${lang}.dict.naver.com/#/search?query=${encodeURIComponent(query)}`, '_blank');
 }
 
 function NewId(){
@@ -1448,6 +1523,7 @@ function NormalizeWords(list){
       word: String(w.word),
       reading: w.reading != null ? String(w.reading) : '',
       meaning: String(w.meaning),
+      lang: LangOf(w),
       excluded: w.excluded === true
     }));
 }
@@ -1456,7 +1532,7 @@ function NormalizeWords(list){
 async function MergeWords(list){
   let added = 0;
   NormalizeWords(list).forEach(w => {
-    if(words.some(x => x.word === w.word && (x.reading || '') === w.reading)) return;
+    if(words.some(x => LangOf(x) === w.lang && x.word === w.word && (x.reading || '') === w.reading)) return;
     words.push({ ...w, id: NewId() });
     added++;
   });
@@ -1467,14 +1543,48 @@ async function MergeWords(list){
 function SetKind(kind){
   _kind = kind;
   localStorage.setItem(_kindKey, kind);
-  document.querySelectorAll('.kind-switch button').forEach(b => {
+  document.querySelectorAll('#kindSwitch button').forEach(b => {
     b.classList.toggle('active', b.dataset.kind === kind);
   });
   setTab(_tab);
 }
 
-document.querySelectorAll('.kind-switch button').forEach(b => {
+document.querySelectorAll('#kindSwitch button').forEach(b => {
   b.onclick = () => SetKind(b.dataset.kind);
+});
+
+function SetLang(lang){
+  _lang = lang;
+  localStorage.setItem(_langKey, lang);
+  listPage = 0;
+  _wordPage = 0;
+  ApplyLang();
+  setTab(_tab);
+}
+
+function ApplyLang(){
+  const zh = _lang === 'zh';
+  const t = _langText[_lang];
+  const el = id => document.getElementById(id);
+  document.querySelectorAll('#langSwitch button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === _lang);
+  });
+  el('jaReadRow').style.display = zh ? 'none' : '';
+  el('pinyinRow').style.display = zh ? '' : 'none';
+  el('inSearch').placeholder = t.search;
+  el('dictCredit').textContent = t.credit;
+  el('inWordSearch').placeholder = t.wordSearch;
+  el('wordDictCredit').textContent = t.wordCredit;
+  el('inWord').placeholder = t.word;
+  el('inReading').placeholder = t.reading;
+  el('readingLabel').textContent = zh ? '병음' : '읽는 법';
+  el('inWordMeaning').placeholder = _meaningHint;
+  el('searchResult').innerHTML = '';
+  el('wordSearchResult').innerHTML = '';
+}
+
+document.querySelectorAll('#langSwitch button').forEach(b => {
+  b.onclick = () => SetLang(b.dataset.lang);
 });
 
 // --- 등록 ---
@@ -1488,9 +1598,9 @@ document.getElementById('btnWordSave').onclick = async () => {
     msg.textContent = '단어와 뜻은 필수 입력입니다.';
     return;
   }
-  if(words.some(w => w.word === word) && !confirm(`'${word}'은(는) 이미 등록되어 있습니다. 한 번 더 추가할까요?`)) return;
+  if(Mine(words).some(w => w.word === word) && !confirm(`'${word}'은(는) 이미 등록되어 있습니다. 한 번 더 추가할까요?`)) return;
 
-  words.push({ id: NewId(), word, reading, meaning, excluded: false });
+  words.push({ id: NewId(), lang: _lang, word, reading, meaning, excluded: false });
   await SaveWords();
 
   document.getElementById('inWord').value = '';
@@ -1498,7 +1608,7 @@ document.getElementById('btnWordSave').onclick = async () => {
   document.getElementById('inWordMeaning').value = '';
   document.getElementById('inWordMeaning').placeholder = _meaningHint;
   document.getElementById('inWord').focus();
-  if(_wordDict && document.getElementById('inWordSearch').value.trim()) RunWordSearch();
+  if(_dicts[DictUrl('word')] && document.getElementById('inWordSearch').value.trim()) RunWordSearch();
   msg.textContent = `'${word}' 저장 완료`;
   setTimeout(() => msg.textContent = '', 1500);
 };
@@ -1509,21 +1619,22 @@ document.getElementById('btnWordImport').onclick = () => document.getElementById
 
 function RenderWordList(){
   const card = document.getElementById('wordListCard');
-  if(words.length === 0){
+  const list = Mine(words);
+  if(list.length === 0){
     card.innerHTML = '<div class="empty">등록된 단어가 없습니다.</div>';
     return;
   }
 
-  const totalPages = Math.ceil(words.length / PAGE_SIZE);
+  const totalPages = Math.ceil(list.length / PAGE_SIZE);
   _wordPage = Math.min(Math.max(_wordPage, 0), totalPages - 1);
   const start = _wordPage * PAGE_SIZE;
 
-  const rowsHtml = words.slice(start, start + PAGE_SIZE).map(w => `
+  const rowsHtml = list.slice(start, start + PAGE_SIZE).map(w => `
     <div class="entry">
       <div class="info" style="padding-left:0">
         <div class="word-main">${Esc(w.word)}</div>
         <div class="meaning">${Esc(w.meaning)}</div>
-        <div>읽는 법: ${Esc(w.reading) || '-'}${w.excluded ? ' · 시험 제외' : ''}</div>
+        <div>${ReadLabel(w)}: ${Esc(w.reading) || '-'}${w.excluded ? ' · 시험 제외' : ''}</div>
       </div>
       <button class="ghost" data-wdict="${w.id}">사전 검색</button>
       <button class="ghost" data-wedit="${w.id}">수정</button>
@@ -1534,7 +1645,7 @@ function RenderWordList(){
   const pagerHtml = totalPages > 1 ? `
     <div class="pager">
       <button class="ghost" id="wordPagePrev" ${_wordPage === 0 ? 'disabled' : ''}>‹ 이전</button>
-      <span class="pager-label">${_wordPage + 1} / ${totalPages} 페이지 (총 ${words.length}개)</span>
+      <span class="pager-label">${_wordPage + 1} / ${totalPages} 페이지 (총 ${list.length}개)</span>
       <button class="ghost" id="wordPageNext" ${_wordPage >= totalPages - 1 ? 'disabled' : ''}>다음 ›</button>
     </div>
   ` : '';
@@ -1544,7 +1655,7 @@ function RenderWordList(){
   card.querySelectorAll('button[data-wdict]').forEach(btn => {
     btn.onclick = () => {
       const w = words.find(x => x.id === btn.dataset.wdict);
-      if(w) window.open(`https://ja.dict.naver.com/#/search?query=${encodeURIComponent(w.word)}`, '_blank');
+      if(w) OpenNaver(LangOf(w), w.word);
     };
   });
   card.querySelectorAll('button[data-wedit]').forEach(btn => {
@@ -1577,7 +1688,7 @@ function ShowEditWord(id){
         <input id="editWord" value="${Esc(w.word)}">
       </div>
       <div class="field">
-        <label>읽는 법</label>
+        <label>${ReadLabel(w)}</label>
         <input id="editReading" value="${Esc(w.reading)}">
       </div>
       <div class="field">
@@ -1612,7 +1723,7 @@ function ShowEditWord(id){
 // --- 시험 ---
 function RenderWordTestStart(){
   const card = document.getElementById('wordTestCard');
-  const available = words.filter(w => !w.excluded);
+  const available = Mine(words).filter(w => !w.excluded);
   if(available.length === 0){
     card.innerHTML = '<div class="empty">시험할 단어가 없습니다.<br>먼저 단어를 등록해 주세요.</div>';
     return;
@@ -1630,7 +1741,7 @@ function RenderWordTestStart(){
 
 function StartWordTest(mode){
   _wordMode = mode;
-  _wordQueue = shuffle(words.filter(w => !w.excluded));
+  _wordQueue = shuffle(Mine(words).filter(w => !w.excluded));
   _wordIndex = 0;
   _wordResults = [];
   RenderWordQuestion();
@@ -1653,7 +1764,7 @@ function RenderWordQuestion(){
       <div class="hint">${w2m ? '이 단어의 뜻을 적으세요.' : '이 뜻에 해당하는 단어를 적으세요.'}</div>
     </div>
     <div class="field">
-      <input id="wordAnswer" autocomplete="off" placeholder="${w2m ? '뜻' : '단어 또는 읽는 법'}">
+      <input id="wordAnswer" autocomplete="off" placeholder="${w2m ? '뜻' : '단어 또는 ' + ReadLabel(w)}">
     </div>
     <div class="canvas-actions">
       <button class="ghost" id="btnWordExclude">시험에서 제외하기</button>
@@ -1681,6 +1792,7 @@ function IsWordMatch(w, answer){
   if(_wordMode === 'w2m'){
     return n(w.meaning) === a || w.meaning.split(/[,，、;/]/).some(m => n(m) === a);
   }
+  if(LangOf(w) === 'zh' && w.reading && PinyinMatch(Pinyin(answer), Pinyin(w.reading))) return true;
   return n(w.word) === a || (!!w.reading && n(w.reading) === a);
 }
 
@@ -1724,6 +1836,7 @@ function RenderWordReport(){
   if(total > 0){
     sessions.push({
       date: todayKey(),
+      lang: _lang,
       kind: 'word',
       mode: _wordMode,
       total,
@@ -1761,7 +1874,7 @@ function RenderWordReport(){
 document.getElementById('btnShowExcludedWords').onclick = () => ShowExcludedWords();
 
 function ShowExcludedWords(){
-  const excluded = words.filter(w => w.excluded);
+  const excluded = Mine(words).filter(w => w.excluded);
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
 
@@ -1772,7 +1885,7 @@ function ShowExcludedWords(){
           <div class="info" style="padding-left:0">
             <div class="word-main">${Esc(w.word)}</div>
             <div class="meaning">${Esc(w.meaning)}</div>
-            <div>읽는 법: ${Esc(w.reading) || '-'}</div>
+            <div>${ReadLabel(w)}: ${Esc(w.reading) || '-'}</div>
           </div>
           <button class="ghost" data-wrelease="${w.id}">해제</button>
         </div>
@@ -1800,27 +1913,56 @@ function ShowExcludedWords(){
   overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
 }
 
-// ===== 사전 검색 (dict.json: [한자, 뜻, 훈독, 음독], 빈도순) =====
-const _dictUrl = 'dict.json';
+// ===== 사전 검색 =====
+// ja: dict.json [한자, 뜻, 훈독, 음독] · words_dict.json [단어, 읽는 법, 영어 뜻, 다른 표기]
+// zh: zh_dict.json [한자, 뜻, 병음] · zh_words_dict.json [간체, 병음, 영어 뜻, 번체]
+// 언어별 사전은 그 언어로 처음 검색할 때 따로 받음
+const _dictUrls = {
+  ja: { hanja: 'dict.json', word: 'words_dict.json' },
+  zh: { hanja: 'zh_dict.json', word: 'zh_words_dict.json' }
+};
 const _maxResults = 30;
-let _dict = null;
-let _dictLoading = null;
+const _meaningHint = '예: 등산';
+const _dicts = {};
+const _dictLoads = {};
 
-function LoadDict(){
-  if(_dict) return Promise.resolve(_dict);
-  if(!_dictLoading){
-    _dictLoading = fetch(_dictUrl)
+function DictUrl(kind){
+  return _dictUrls[_lang][kind];
+}
+
+function LoadDict(url){
+  if(_dicts[url]) return Promise.resolve(_dicts[url]);
+  if(!_dictLoads[url]){
+    _dictLoads[url] = fetch(url)
       .then(r => {
         if(!r.ok) throw new Error(r.status);
         return r.json();
       })
-      .then(j => _dict = j.d)
+      .then(j => _dicts[url] = j.d)
       .catch(e => {
-        _dictLoading = null;
+        delete _dictLoads[url];
         throw e;
       });
   }
-  return _dictLoading;
+  return _dictLoads[url];
+}
+
+// 사전을 받는 동안 언어가 바뀌면 null
+async function GetDict(kind, box){
+  const lang = _lang;
+  const url = DictUrl(kind);
+  if(!_dicts[url]) box.innerHTML = '<div class="empty">사전 불러오는 중…</div>';
+  try{
+    const dict = await LoadDict(url);
+    return lang === _lang ? dict : null;
+  }catch(e){
+    console.error(e);
+    if(lang !== _lang) return null;
+    box.innerHTML = location.protocol === 'file:'
+      ? '<div class="empty">사전 검색은 GitHub 링크에서 사용할 수 있습니다.</div>'
+      : `<div class="empty">사전을 불러오지 못했습니다. ${url}이 같은 폴더에 있는지 확인해 주세요.</div>`;
+    return null;
+  }
 }
 
 function ToHira(str){
@@ -1833,28 +1975,75 @@ function ReadingKeys(text){
   return text.split('、').flatMap(r => [r.replace(/[()]/g, ''), r.replace(/\(.*\)/, '')]);
 }
 
-function SearchDict(query){
+// ===== 병음 =====
+const _toneChars = 'āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ';
+const _toneBase = 'aeiouv';
+const _toneRe = new RegExp(`[${_toneChars}]`, 'g');
+
+// "shān dēng" / "shan1 deng1" → { key: 'shandeng', tones: '11' }
+function Pinyin(text){
+  let tones = '';
+  const key = String(text || '').normalize('NFC').toLowerCase()
+    .replace(_toneRe, ch => {
+      const i = _toneChars.indexOf(ch);
+      tones += String(i % 4 + 1);
+      return _toneBase[Math.floor(i / 4)];
+    })
+    .replace(/[1-4]/g, d => {
+      tones += d;
+      return '';
+    })
+    .replace(/ü|u:/g, 'v')
+    .replace(/[^a-z]/g, '');
+  return { key, tones };
+}
+
+// 성조를 입력했으면 성조까지, 아니면 발음만 비교
+function PinyinMatch(q, r, prefix = false){
+  if(!q.key) return false;
+  const hit = prefix ? r.key.startsWith(q.key) : r.key === q.key;
+  return hit && (!q.tones || r.tones.startsWith(q.tones));
+}
+
+function IsPinyinQuery(q){
+  return /^[\p{Script=Latin}\d\s'’:]+$/u.test(q);
+}
+
+// ===== 한자 사전 =====
+function SearchDict(dict, query){
   const q = query.trim();
   if(!q) return [];
+  const zh = _lang === 'zh';
 
   // 한자: 입력한 글자 순서대로
   const hans = [...q].filter(ch => /\p{Script=Han}/u.test(ch));
   if(hans.length){
-    return [...new Set(hans)].map(h => _dict.find(r => r[0] === h)).filter(Boolean);
+    return [...new Set(hans)].map(h => dict.find(r => r[0] === h)).filter(Boolean);
   }
 
   // 가나: 훈독/음독 일치
-  if(/[\u3040-\u30ff]/.test(q)){
+  if(!zh && /[\u3040-\u30ff]/.test(q)){
     const k = ToHira(q.replace(/\s/g, ''));
-    return _dict
+    return dict
       .filter(r => ReadingKeys(r[2]).includes(k) || ReadingKeys(r[3]).includes(k))
+      .slice(0, _maxResults);
+  }
+
+  // 병음: 발음 일치 (성조 입력 시 성조까지)
+  if(zh && IsPinyinQuery(q)){
+    const p = Pinyin(q);
+    return dict
+      .filter(r => {
+        if(!r.py) r.py = (r[2] || '').split(/[,，\s]+/).filter(Boolean).map(Pinyin);
+        return r.py.some(x => PinyinMatch(p, x));
+      })
       .slice(0, _maxResults);
   }
 
   // 한글: 훈음 일치 > 음 일치 > 부분 일치
   const n = q.replace(/\s/g, '').normalize('NFC');
   const scored = [];
-  for(const r of _dict){
+  for(const r of dict){
     if(!r[1]) continue;
     const senses = r[1].normalize('NFC').split(/[,，、]/).map(x => x.replace(/\s/g, ''));
     let score = -1;
@@ -1876,17 +2065,27 @@ async function RunSearch(){
     box.innerHTML = '';
     return;
   }
-  if(!_dict) box.innerHTML = '<div class="empty">사전 불러오는 중…</div>';
-  try{
-    await LoadDict();
-  }catch(e){
-    console.error(e);
-    box.innerHTML = location.protocol === 'file:'
-      ? '<div class="empty">사전 검색은 GitHub 링크에서 사용할 수 있습니다.</div>'
-      : '<div class="empty">사전을 불러오지 못했습니다. dict.json이 같은 폴더에 있는지 확인해 주세요.</div>';
-    return;
-  }
-  RenderSearch(SearchDict(query));
+  const dict = await GetDict('hanja', box);
+  if(dict) RenderSearch(SearchDict(dict, query));
+}
+
+function DictReadText(r){
+  return _lang === 'zh'
+    ? `병음: ${r[2] || '-'}`
+    : `훈독: ${r[2] || '-'} · 음독: ${r[3] || '-'}`;
+}
+
+function DictEntry(r){
+  const zh = _lang === 'zh';
+  return {
+    id: NewId(),
+    lang: _lang,
+    han: r[0],
+    kun: zh ? '' : r[2],
+    on: zh ? '' : r[3],
+    pinyin: zh ? r[2] : '',
+    meaning: r[1]
+  };
 }
 
 function RenderSearch(results){
@@ -1895,13 +2094,13 @@ function RenderSearch(results){
     box.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>';
     return;
   }
-  const has = new Set(entries.map(e => e.han));
+  const has = new Set(Mine(entries).map(e => e.han));
   box.innerHTML = results.map((r, i) => `
     <div class="entry">
       <div class="han">${r[0]}</div>
       <div class="info">
         <div class="meaning">${r[1] || '(뜻 없음)'} ${has.has(r[0]) ? '<span class="tag">등록됨</span>' : ''}</div>
-        <div>훈독: ${r[2] || '-'} · 음독: ${r[3] || '-'}</div>
+        <div>${DictReadText(r)}</div>
       </div>
       <button class="ghost" data-fill="${i}">채우기</button>
       <button class="ghost" data-add="${i}">추가</button>
@@ -1917,10 +2116,12 @@ function RenderSearch(results){
 }
 
 function FillForm(r){
-  document.getElementById('inHan').value = r[0];
-  document.getElementById('inKun').value = r[2];
-  document.getElementById('inOn').value = r[3];
-  document.getElementById('inMeaning').value = r[1];
+  const e = DictEntry(r);
+  document.getElementById('inHan').value = e.han;
+  document.getElementById('inKun').value = e.kun || '';
+  document.getElementById('inOn').value = e.on || '';
+  document.getElementById('inPinyin').value = e.pinyin || '';
+  document.getElementById('inMeaning').value = e.meaning || '';
   const target = document.getElementById(r[1] ? 'inHan' : 'inMeaning');
   target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   target.focus();
@@ -1933,15 +2134,9 @@ async function AddFromDict(r, results){
     msg.textContent = '뜻을 입력한 뒤 저장해 주세요.';
     return;
   }
-  if(entries.some(e => e.han === r[0]) && !confirm(`'${r[0]}'은(는) 이미 등록되어 있습니다. 한 번 더 추가할까요?`)) return;
+  if(Mine(entries).some(e => e.han === r[0]) && !confirm(`'${r[0]}'은(는) 이미 등록되어 있습니다. 한 번 더 추가할까요?`)) return;
 
-  entries.push({
-    id: Date.now().toString() + Math.random().toString(36).slice(2),
-    han: r[0],
-    kun: r[2],
-    on: r[3],
-    meaning: r[1]
-  });
+  entries.push(DictEntry(r));
   await saveEntries();
   RenderSearch(results);
   msg.textContent = `'${r[0]}' 저장 완료`;
@@ -1951,37 +2146,15 @@ async function AddFromDict(r, results){
 document.getElementById('btnSearch').onclick = RunSearch;
 OnEnter(document.getElementById('inSearch'), RunSearch);
 
-// ===== 단어 사전 검색 (words_dict.json: [단어, 읽는 법, 영어 뜻, 다른 표기]) =====
-const _wordDictUrl = 'words_dict.json';
-const _meaningHint = '예: 등산';
-let _wordDict = null;
-let _wordDictLoading = null;
-
-function LoadWordDict(){
-  if(_wordDict) return Promise.resolve(_wordDict);
-  if(!_wordDictLoading){
-    _wordDictLoading = fetch(_wordDictUrl)
-      .then(r => {
-        if(!r.ok) throw new Error(r.status);
-        return r.json();
-      })
-      .then(j => _wordDict = j.d)
-      .catch(e => {
-        _wordDictLoading = null;
-        throw e;
-      });
-  }
-  return _wordDictLoading;
-}
-
-// 일본어: 일치 > 앞부분 일치 > 포함 / 영어: 뜻 일치 > 포함
-function SearchWords(query){
+// ===== 단어 사전 =====
+// 한자·가나: 일치 > 앞부분 일치 > 포함 / 병음: 일치 > 앞부분 일치 / 영어: 뜻 일치 > 포함
+function SearchWords(dict, query){
   const q = query.trim();
   const scored = [];
 
   if(/[\u3040-\u30ff\u3400-\u9fff々]/.test(q)){
     const k = ToHira(q.replace(/\s/g, ''));
-    for(const r of _wordDict){
+    for(const r of dict){
       const forms = [r[0], r[1], ...(r[3] ? r[3].split('|') : [])].filter(Boolean).map(ToHira);
       let score = -1;
       if(forms.includes(k)) score = 0;
@@ -1991,12 +2164,20 @@ function SearchWords(query){
     }
   } else {
     const n = q.toLowerCase();
-    for(const r of _wordDict){
-      const terms = r[2].toLowerCase().split(/[;,]\s*/);
+    const p = _lang === 'zh' && IsPinyinQuery(q) ? Pinyin(q) : null;
+    for(const r of dict){
       let score = -1;
-      if(terms.includes(n) || terms.includes('to ' + n)) score = 0;
-      else if(terms.some(t => t.split(/[\s()]+/).includes(n))) score = 1;
-      else if(r[2].toLowerCase().includes(n)) score = 2;
+      if(p){
+        if(!r.py) r.py = Pinyin(r[1]);
+        if(PinyinMatch(p, r.py)) score = 0;
+        else if(PinyinMatch(p, r.py, true)) score = 1;
+      }
+      if(score < 0){
+        const terms = r[2].toLowerCase().split(/[;,]\s*/);
+        if(terms.includes(n) || terms.includes('to ' + n)) score = 2;
+        else if(terms.some(t => t.split(/[\s()]+/).includes(n))) score = 3;
+        else if(r[2].toLowerCase().includes(n)) score = 4;
+      }
       if(score >= 0) scored.push({ r, score });
     }
   }
@@ -2014,20 +2195,11 @@ async function RunWordSearch(){
     return;
   }
   if(/[\uac00-\ud7a3]/.test(query)){
-    box.innerHTML = '<div class="empty">한국어 뜻 검색은 지원하지 않습니다.<br>일본어(한자·가나)나 영어로 검색해 주세요.</div>';
+    box.innerHTML = `<div class="empty">한국어 뜻 검색은 지원하지 않습니다.<br>${_langText[_lang].koHint}</div>`;
     return;
   }
-  if(!_wordDict) box.innerHTML = '<div class="empty">사전 불러오는 중…</div>';
-  try{
-    await LoadWordDict();
-  }catch(e){
-    console.error(e);
-    box.innerHTML = location.protocol === 'file:'
-      ? '<div class="empty">사전 검색은 GitHub 링크에서 사용할 수 있습니다.</div>'
-      : '<div class="empty">사전을 불러오지 못했습니다. words_dict.json이 같은 폴더에 있는지 확인해 주세요.</div>';
-    return;
-  }
-  RenderWordSearch(SearchWords(query));
+  const dict = await GetDict('word', box);
+  if(dict) RenderWordSearch(SearchWords(dict, query));
 }
 
 function RenderWordSearch(results){
@@ -2036,11 +2208,11 @@ function RenderWordSearch(results){
     box.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>';
     return;
   }
-  const has = new Set(words.map(w => w.word));
+  const has = new Set(Mine(words).map(w => w.word));
   box.innerHTML = results.map((r, i) => `
     <div class="entry">
       <div class="info" style="padding-left:0">
-        <div class="word-main">${Esc(r[0])} ${has.has(r[0]) ? '<span class="tag">등록됨</span>' : ''}</div>
+        <div class="word-main">${Esc(r[0])} ${r[3] && _lang === 'zh' ? `<span style="font-size:14px">(${Esc(r[3])})</span>` : ''} ${has.has(r[0]) ? '<span class="tag">등록됨</span>' : ''}</div>
         <div>${Esc(r[1]) || '-'}</div>
         <div>${Esc(r[2])}</div>
       </div>
@@ -2221,6 +2393,8 @@ function NormalizeEntries(list){
       on: e.on != null ? String(e.on) : '',
       kun: e.kun != null ? String(e.kun) : '',
       meaning: String(e.meaning),
+      pinyin: e.pinyin != null ? String(e.pinyin) : '',
+      lang: LangOf(e),
       excluded: e.excluded === true
     }));
 }
@@ -2474,6 +2648,7 @@ window.addEventListener('beforeunload', e => {
   await loadEntries();
   await loadSessions();
   LoadWords();
+  ApplyLang();
   SetKind(_kind);
   UpdateAuthUI();
   if(location.protocol === 'file:') SetStatus('구글 연동은 GitHub 링크에서 사용할 수 있습니다', true);
