@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인정보처리방침 · 한자 암기장</title>
+<style>
+  :root{
+    --paper:#f5f1e8;
+    --ink:#2b2620;
+    --ink-soft:#6b6255;
+    --seal:#a8362a;
+    --line:#d8d0bd;
+    --card:#fffdf8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Serif KR","Nanum Myeongjo",serif;
+    line-height:1.8;
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:32px 20px 60px;
+  }
+  header{
+    text-align:center;
+    margin-bottom:24px;
+  }
+  header h1{
+    font-size:26px;
+    letter-spacing:2px;
+    margin:0 0 4px;
+  }
+  header .sub{
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:24px 22px;
+  }
+  h2{
+    font-size:16px;
+    margin:28px 0 8px;
+    padding-left:10px;
+    border-left:3px solid var(--seal);
+  }
+  h2:first-child{margin-top:0;}
+  p, li{font-size:14px;}
+  ul{padding-left:20px;margin:6px 0;}
+  a{color:var(--seal);}
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:20px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>개인정보처리방침</h1>
+    <div class="sub">한자 암기장 · 시행일 2026년 9월 30일</div>
+  </header>
+  <div class="card">
+    <h2>개요</h2>
+    <p>한자 암기장(이하 "앱")은 개인이 만든 무료 학습 도구입니다. 앱에는 별도의 서버가 없으며, 개발자는 사용자의 학습 데이터나 개인정보를 수집·보관하지 않습니다.</p>
+
+    <h2>앱이 다루는 정보</h2>
+    <ul>
+      <li><b>학습 데이터</b>: 사용자가 등록한 한자·단어, 시험 기록, 시험 제외 설정입니다. 사용자의 브라우저(localStorage)에 저장됩니다.</li>
+      <li><b>구글 계정 이메일</b>: 구글 로그인을 한 경우에만 조회합니다. 화면에 현재 계정을 표시하고 계정 변경을 감지하는 용도로만 쓰며, 사용자의 브라우저에 저장됩니다.</li>
+      <li><b>구글 액세스 토큰</b>: 로그인 시 발급되는 임시 권한입니다. 브라우저 메모리에만 보관되고 약 1시간 뒤 만료됩니다. 어디에도 저장하거나 전송하지 않습니다.</li>
+    </ul>
+
+    <h2>구글 계정 연동</h2>
+    <p>구글 로그인은 선택 기능입니다. 로그인하면 앱은 <code>drive.file</code> 권한으로 사용자의 구글 드라이브에 <b>HanjaMemorizer</b> 스프레드시트를 만들고, 학습 데이터를 저장하거나 불러옵니다.</p>
+    <ul>
+      <li>이 권한으로는 앱이 만든 파일에만 접근할 수 있으며, 사용자의 다른 드라이브 파일은 보거나 수정할 수 없습니다.</li>
+      <li>스프레드시트는 사용자 본인의 드라이브에 저장되며, 개발자는 이 파일에 접근할 수 없습니다.</li>
+    </ul>
+    <p>앱이 Google API로부터 받은 정보의 사용 및 다른 앱으로의 전송은 제한적 사용(Limited Use) 요구사항을 포함한 <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API 서비스 사용자 데이터 정책</a>을 준수합니다.</p>
+
+    <h2>제3자 제공</h2>
+    <p>앱은 사용자의 정보를 누구에게도 판매하거나 제공하지 않으며, 광고나 분석 도구를 사용하지 않습니다.</p>
+    <p>다만 앱을 이용하는 과정에서 다음 서비스가 각자의 정책에 따라 접속 정보(IP 주소 등)를 처리할 수 있습니다.</p>
+    <ul>
+      <li>GitHub Pages: 앱과 사전 파일 호스팅 (<a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub 개인정보처리방침</a>)</li>
+      <li>Google: 로그인과 스프레드시트 저장 (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google 개인정보처리방침</a>)</li>
+      <li>네이버 사전: 목록의 사전 검색 버튼을 눌렀을 때만 이동</li>
+    </ul>
+
+    <h2>데이터 삭제와 권한 철회</h2>
+    <ul>
+      <li>앱 안에서 단어를 삭제하거나, 브라우저 설정에서 이 사이트의 데이터를 삭제하면 로컬 데이터가 지워집니다.</li>
+      <li>구글 드라이브에서 <b>HanjaMemorizer</b> 스프레드시트를 삭제하면 저장된 데이터가 지워집니다.</li>
+      <li>앱의 로그아웃 버튼을 누르거나 <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">구글 계정 → 서드파티 앱 및 서비스</a>에서 앱의 권한을 철회할 수 있습니다.</li>
+    </ul>
+
+    <h2>방침 변경</h2>
+    <p>이 방침이 바뀌면 이 페이지에 새 내용과 시행일을 게시합니다.</p>
+
+    <h2>문의</h2>
+    <p>Discord: 냉면#6848</p>
+  </div>
+  <footer>
+    <a href="privacy.html">개인정보처리방침</a> ｜ <a href="terms.html">서비스 약관</a>
+  </footer>
+</div>
+</body>
+</html>
