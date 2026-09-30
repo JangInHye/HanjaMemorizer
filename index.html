@@ -414,6 +414,78 @@
     color:var(--ink);
     background:#fbf3ea;
   }
+  .policy-links{
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+    padding:0 0 40px;
+  }
+  .policy-links a{color:var(--ink-soft);}
+  /* kind switch / words */
+  .kind-switch{
+    display:flex;
+    margin-bottom:12px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .kind-switch button{
+    flex:1;
+    padding:8px 0;
+    background:none;
+    border:none;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .kind-switch button.active{
+    background:var(--ink);
+    color:var(--paper);
+  }
+  .entry .word-main{
+    font-size:20px;
+    color:var(--ink);
+    margin-bottom:2px;
+  }
+  .cal-item-row .word{font-size:14px;}
+  /* dict search */
+  .search-row{
+    display:flex;
+    gap:8px;
+  }
+  .search-row input{flex:1;}
+  .search-row button{flex:none;}
+  #searchResult, #wordSearchResult{
+    max-height:360px;
+    overflow-y:auto;
+  }
+  .entry .tag{
+    font-size:11px;
+    color:var(--good);
+  }
+  .dict-credit{
+    font-size:10px;
+    color:var(--ink-soft);
+    text-align:right;
+    margin-top:8px;
+  }
+  /* google sync */
+  .sync-bar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    margin-bottom:12px;
+  }
+  .sync-status{
+    flex:1 1 100%;
+    font-size:12px;
+    color:var(--ink-soft);
+    word-break:break-all;
+  }
+  .sync-status.warn{color:var(--bad);}
 </style>
 </head>
 <body>
@@ -423,14 +495,38 @@
     <div class="sub">오류 및 개선 사항 요청은 Discord - 냉면#6848 로 연락 부탁드립니다.</div>
   </header>
 
+  <div class="sync-bar">
+    <span id="syncStatus" class="sync-status">로그인하지 않음</span>
+    <button class="ghost" id="btnLogin">구글 로그인</button>
+    <button class="ghost" id="btnPull" style="display:none">시트에서 불러오기</button>
+    <button class="ghost" id="btnSwitch" style="display:none">계정 전환</button>
+    <button class="ghost" id="btnLogout" style="display:none">로그아웃</button>
+  </div>
+
+  <div class="kind-switch">
+    <button data-kind="hanja">한자</button>
+    <button data-kind="word">단어</button>
+  </div>
+
   <nav>
-    <button id="tabAdd" class="active">단어 등록</button>
-    <button id="tabList">단어 목록</button>
+    <button id="tabAdd" class="active">등록</button>
+    <button id="tabList">목록</button>
     <button id="tabTest">시험</button>
     <button id="tabCalendar">달력</button>
   </nav>
 
   <div id="viewAdd">
+    <div class="card">
+      <div class="field">
+        <label>사전 검색</label>
+        <div class="search-row">
+          <input id="inSearch" placeholder="예: 뫼 산 · 산 · 山 · やま">
+          <button class="ghost" id="btnSearch">검색</button>
+        </div>
+      </div>
+      <div id="searchResult"></div>
+      <div class="dict-credit">사전 데이터: libhangul · KANJIDIC2 (EDRDG, CC BY-SA 4.0)</div>
+    </div>
     <div class="card">
       <div class="field">
         <label>한자</label>
@@ -471,14 +567,62 @@
 
   <div id="viewTest" style="display:none">
     <div class="card" id="testCard"></div>
-    <button class="ghost" id="btnShowExcluded" style="width:100%">제외한 단어 목록 보기</button>
+    <button class="ghost" id="btnShowExcluded" style="width:100%">제외한 한자 목록 보기</button>
   </div>
 
   <div id="viewCalendar" style="display:none">
     <div class="card" id="calendarCard"></div>
   </div>
+
+  <div id="viewWordAdd" style="display:none">
+    <div class="card">
+      <div class="field">
+        <label>사전 검색</label>
+        <div class="search-row">
+          <input id="inWordSearch" placeholder="예: 山登り · やまのぼり · climbing">
+          <button class="ghost" id="btnWordSearch">검색</button>
+        </div>
+      </div>
+      <div id="wordSearchResult"></div>
+      <div class="dict-credit">사전 데이터: JMdict (EDRDG, CC BY-SA 4.0)</div>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label>단어</label>
+        <input id="inWord" placeholder="예: 山登り">
+      </div>
+      <div class="field">
+        <label>읽는 법</label>
+        <input id="inReading" placeholder="예: やまのぼり">
+      </div>
+      <div class="field">
+        <label>뜻</label>
+        <input id="inWordMeaning" placeholder="예: 등산">
+      </div>
+      <button class="primary" id="btnWordSave">저장</button>
+    </div>
+    <div id="wordSaveMsg" class="msg"></div>
+  </div>
+
+  <div id="viewWordList" style="display:none">
+    <div class="card">
+      <div class="row2">
+        <button class="ghost" id="btnWordExport">내보내기</button>
+        <button class="ghost" id="btnWordImport">가져오기</button>
+      </div>
+    </div>
+    <div class="card" id="wordListCard"></div>
+  </div>
+
+  <div id="viewWordTest" style="display:none">
+    <div class="card" id="wordTestCard"></div>
+    <button class="ghost" id="btnShowExcludedWords" style="width:100%">제외한 단어 목록 보기</button>
+  </div>
 </div>
-<div class="version-tag">ver.1.2</div>
+<div class="policy-links">
+  <a href="privacy.html" target="_blank">개인정보처리방침</a> ｜ <a href="terms.html" target="_blank">서비스 약관</a>
+</div>
+<div class="version-tag">ver.1.4</div>
 
 <script>
 const STORAGE_KEY = 'hanjaEntries';
@@ -502,16 +646,30 @@ const tabAdd = document.getElementById('tabAdd');
 const tabList = document.getElementById('tabList');
 const tabTest = document.getElementById('tabTest');
 const tabCalendar = document.getElementById('tabCalendar');
+const viewWordAdd = document.getElementById('viewWordAdd');
+const viewWordList = document.getElementById('viewWordList');
+const viewWordTest = document.getElementById('viewWordTest');
 
 function setTab(name){
+  _tab = name;
+  const word = _kind === 'word';
   [tabAdd, tabList, tabTest, tabCalendar].forEach(b => b.classList.remove('active'));
-  viewAdd.style.display = 'none';
-  viewList.style.display = 'none';
-  viewTest.style.display = 'none';
-  viewCalendar.style.display = 'none';
-  if(name === 'add'){ tabAdd.classList.add('active'); viewAdd.style.display = 'block'; }
-  if(name === 'list'){ tabList.classList.add('active'); viewList.style.display = 'block'; renderList(); }
-  if(name === 'test'){ tabTest.classList.add('active'); viewTest.style.display = 'block'; startTest(); }
+  [viewAdd, viewList, viewTest, viewCalendar, viewWordAdd, viewWordList, viewWordTest]
+    .forEach(v => v.style.display = 'none');
+  if(name === 'add'){
+    tabAdd.classList.add('active');
+    (word ? viewWordAdd : viewAdd).style.display = 'block';
+  }
+  if(name === 'list'){
+    tabList.classList.add('active');
+    if(word){ viewWordList.style.display = 'block'; RenderWordList(); }
+    else { viewList.style.display = 'block'; renderList(); }
+  }
+  if(name === 'test'){
+    tabTest.classList.add('active');
+    if(word){ viewWordTest.style.display = 'block'; RenderWordTestStart(); }
+    else { viewTest.style.display = 'block'; startTest(); }
+  }
   if(name === 'calendar'){ tabCalendar.classList.add('active'); viewCalendar.style.display = 'block'; selectedDate = null; renderCalendar(); }
 }
 tabAdd.onclick = () => setTab('add');
@@ -572,6 +730,7 @@ async function loadEntries(){
 async function saveEntries(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    MarkDirty();
   }catch(e){
     console.error('저장 실패', e);
   }
@@ -589,6 +748,7 @@ async function loadSessions(){
 async function saveSessions(){
   try{
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+    MarkDirty();
   }catch(e){
     console.error('저장 실패', e);
   }
@@ -625,7 +785,7 @@ document.getElementById('btnSave').onclick = async () => {
 };
 
 function exportData(){
-  const payload = { entries, sessions };
+  const payload = { entries, sessions, words };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -654,15 +814,18 @@ document.getElementById('fileImport').onchange = async (e) => {
 
     let importedEntries = [];
     let importedSessions = [];
+    let importedWords = [];
     if(Array.isArray(imported)){
       importedEntries = imported;
     } else if(imported && typeof imported === 'object'){
       importedEntries = Array.isArray(imported.entries) ? imported.entries : [];
       importedSessions = Array.isArray(imported.sessions) ? imported.sessions : [];
+      importedWords = Array.isArray(imported.words) ? imported.words : [];
     } else {
       throw new Error('형식 오류');
     }
 
+    if(importedWords.length > 0) await MergeWords(importedWords);
     if(importedSessions.length > 0) await mergeSessions(importedSessions);
     processImport(importedEntries);
   }catch(err){
@@ -686,7 +849,9 @@ function processImport(importedList){
     if(!imp.han || !imp.meaning) return;
     const existingIndex = entries.findIndex(e => e.han === imp.han);
     if(existingIndex >= 0){
-      conflicts.push({ existingIndex, existing: entries[existingIndex], imported: imp, choice: 'existing' });
+      if(!IsSameEntry(entries[existingIndex], imp)){
+        conflicts.push({ existingIndex, existing: entries[existingIndex], imported: imp, choice: 'existing' });
+      }
     } else {
       freshList.push(imp);
     }
@@ -766,6 +931,17 @@ async function applyImport(freshList, conflicts){
   });
   await saveEntries();
   renderList();
+  if(_hold){
+    _hold = false;
+    SchedulePush(0);
+  }
+}
+
+function IsSameEntry(a, b){
+  return (a.on || '') === (b.on || '')
+    && (a.kun || '') === (b.kun || '')
+    && a.meaning === b.meaning
+    && !!a.excluded === !!b.excluded;
 }
 
 function showDictChoice(han){
@@ -1176,13 +1352,13 @@ function renderCalDetail(daySessions){
     const itemRows = s.items.map(it => `
       <div class="cal-item-row">
         <div class="mark ${it.correct ? 'good' : 'bad'}" style="color:${it.correct ? 'var(--good)' : 'var(--bad)'}">${it.correct ? '○' : '✕'}</div>
-        <div class="han">${it.han}</div>
+        <div class="${s.kind === 'word' ? 'word' : 'han'}">${it.han}</div>
         <div>${it.meaning}</div>
       </div>
     `).join('');
     return `
       <div class="cal-session">
-        <div class="cal-session-summary">${idx + 1}회차 · ${s.correct}/${s.total} 정답 (${rate}%)</div>
+        <div class="cal-session-summary">${idx + 1}회차 · ${KindLabel(s)} · ${s.correct}/${s.total} 정답 (${rate}%)</div>
         ${itemRows}
       </div>
     `;
@@ -1196,10 +1372,1096 @@ function renderCalDetail(daySessions){
   `;
 }
 
+// ===== 일본어 단어 =====
+const WORDS_KEY = 'hanjaWords';
+const _kindKey = 'hanjaKind';
+let words = [];
+let _kind = localStorage.getItem(_kindKey) === 'word' ? 'word' : 'hanja';
+let _tab = 'add';
+let _wordPage = 0;
+let _wordMode = 'w2m'; // w2m: 단어 → 뜻, m2w: 뜻 → 단어
+let _wordQueue = [];
+let _wordIndex = 0;
+let _wordResults = [];
+
+function LoadWords(){
+  try{
+    const raw = localStorage.getItem(WORDS_KEY);
+    words = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    words = [];
+  }
+}
+
+async function SaveWords(){
+  try{
+    localStorage.setItem(WORDS_KEY, JSON.stringify(words));
+    MarkDirty();
+  }catch(e){
+    console.error('저장 실패', e);
+  }
+}
+
+function NewId(){
+  return Date.now().toString() + Math.random().toString(36).slice(2);
+}
+
+function Esc(str){
+  return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+}
+
+function KindLabel(s){
+  if(s.kind !== 'word') return '한자';
+  return s.mode === 'm2w' ? '단어(뜻→단어)' : '단어(단어→뜻)';
+}
+
+function NormalizeWords(list){
+  return (list || [])
+    .filter(w => w.word && w.meaning)
+    .map(w => ({
+      id: w.id ? String(w.id) : NewId(),
+      word: String(w.word),
+      reading: w.reading != null ? String(w.reading) : '',
+      meaning: String(w.meaning),
+      excluded: w.excluded === true
+    }));
+}
+
+// 같은 단어+읽는 법은 기존 데이터 유지
+async function MergeWords(list){
+  let added = 0;
+  NormalizeWords(list).forEach(w => {
+    if(words.some(x => x.word === w.word && (x.reading || '') === w.reading)) return;
+    words.push({ ...w, id: NewId() });
+    added++;
+  });
+  if(added) await SaveWords();
+  if(viewWordList.style.display !== 'none') RenderWordList();
+}
+
+function SetKind(kind){
+  _kind = kind;
+  localStorage.setItem(_kindKey, kind);
+  document.querySelectorAll('.kind-switch button').forEach(b => {
+    b.classList.toggle('active', b.dataset.kind === kind);
+  });
+  setTab(_tab);
+}
+
+document.querySelectorAll('.kind-switch button').forEach(b => {
+  b.onclick = () => SetKind(b.dataset.kind);
+});
+
+// --- 등록 ---
+document.getElementById('btnWordSave').onclick = async () => {
+  const word = document.getElementById('inWord').value.trim();
+  const reading = document.getElementById('inReading').value.trim();
+  const meaning = document.getElementById('inWordMeaning').value.trim();
+  const msg = document.getElementById('wordSaveMsg');
+
+  if(!word || !meaning){
+    msg.textContent = '단어와 뜻은 필수 입력입니다.';
+    return;
+  }
+  if(words.some(w => w.word === word) && !confirm(`'${word}'은(는) 이미 등록되어 있습니다. 한 번 더 추가할까요?`)) return;
+
+  words.push({ id: NewId(), word, reading, meaning, excluded: false });
+  await SaveWords();
+
+  document.getElementById('inWord').value = '';
+  document.getElementById('inReading').value = '';
+  document.getElementById('inWordMeaning').value = '';
+  document.getElementById('inWordMeaning').placeholder = _meaningHint;
+  document.getElementById('inWord').focus();
+  if(_wordDict && document.getElementById('inWordSearch').value.trim()) RunWordSearch();
+  msg.textContent = `'${word}' 저장 완료`;
+  setTimeout(() => msg.textContent = '', 1500);
+};
+
+// --- 목록 ---
+document.getElementById('btnWordExport').onclick = () => exportData();
+document.getElementById('btnWordImport').onclick = () => document.getElementById('fileImport').click();
+
+function RenderWordList(){
+  const card = document.getElementById('wordListCard');
+  if(words.length === 0){
+    card.innerHTML = '<div class="empty">등록된 단어가 없습니다.</div>';
+    return;
+  }
+
+  const totalPages = Math.ceil(words.length / PAGE_SIZE);
+  _wordPage = Math.min(Math.max(_wordPage, 0), totalPages - 1);
+  const start = _wordPage * PAGE_SIZE;
+
+  const rowsHtml = words.slice(start, start + PAGE_SIZE).map(w => `
+    <div class="entry">
+      <div class="info" style="padding-left:0">
+        <div class="word-main">${Esc(w.word)}</div>
+        <div class="meaning">${Esc(w.meaning)}</div>
+        <div>읽는 법: ${Esc(w.reading) || '-'}${w.excluded ? ' · 시험 제외' : ''}</div>
+      </div>
+      <button class="ghost" data-wdict="${w.id}">사전 검색</button>
+      <button class="ghost" data-wedit="${w.id}">수정</button>
+      <button class="ghost" data-wdel="${w.id}">삭제</button>
+    </div>
+  `).join('');
+
+  const pagerHtml = totalPages > 1 ? `
+    <div class="pager">
+      <button class="ghost" id="wordPagePrev" ${_wordPage === 0 ? 'disabled' : ''}>‹ 이전</button>
+      <span class="pager-label">${_wordPage + 1} / ${totalPages} 페이지 (총 ${words.length}개)</span>
+      <button class="ghost" id="wordPageNext" ${_wordPage >= totalPages - 1 ? 'disabled' : ''}>다음 ›</button>
+    </div>
+  ` : '';
+
+  card.innerHTML = rowsHtml + pagerHtml;
+
+  card.querySelectorAll('button[data-wdict]').forEach(btn => {
+    btn.onclick = () => {
+      const w = words.find(x => x.id === btn.dataset.wdict);
+      if(w) window.open(`https://ja.dict.naver.com/#/search?query=${encodeURIComponent(w.word)}`, '_blank');
+    };
+  });
+  card.querySelectorAll('button[data-wedit]').forEach(btn => {
+    btn.onclick = () => ShowEditWord(btn.dataset.wedit);
+  });
+  card.querySelectorAll('button[data-wdel]').forEach(btn => {
+    btn.onclick = async () => {
+      words = words.filter(w => w.id !== btn.dataset.wdel);
+      await SaveWords();
+      RenderWordList();
+    };
+  });
+
+  if(totalPages > 1){
+    document.getElementById('wordPagePrev').onclick = () => { _wordPage--; RenderWordList(); };
+    document.getElementById('wordPageNext').onclick = () => { _wordPage++; RenderWordList(); };
+  }
+}
+
+function ShowEditWord(id){
+  const w = words.find(x => x.id === id);
+  if(!w) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+  overlay.innerHTML = `
+    <div class="card" style="max-width:340px;width:100%;">
+      <div class="field">
+        <label>단어</label>
+        <input id="editWord" value="${Esc(w.word)}">
+      </div>
+      <div class="field">
+        <label>읽는 법</label>
+        <input id="editReading" value="${Esc(w.reading)}">
+      </div>
+      <div class="field">
+        <label>뜻</label>
+        <input id="editWordMeaning" value="${Esc(w.meaning)}">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost" id="editWordCancel" style="flex:1;">취소</button>
+        <button class="primary" id="editWordSave" style="flex:1;">저장</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#editWordCancel').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+  overlay.querySelector('#editWordSave').onclick = async () => {
+    const word = document.getElementById('editWord').value.trim();
+    const reading = document.getElementById('editReading').value.trim();
+    const meaning = document.getElementById('editWordMeaning').value.trim();
+    if(!word || !meaning) return;
+
+    w.word = word;
+    w.reading = reading;
+    w.meaning = meaning;
+    await SaveWords();
+    overlay.remove();
+    RenderWordList();
+  };
+}
+
+// --- 시험 ---
+function RenderWordTestStart(){
+  const card = document.getElementById('wordTestCard');
+  const available = words.filter(w => !w.excluded);
+  if(available.length === 0){
+    card.innerHTML = '<div class="empty">시험할 단어가 없습니다.<br>먼저 단어를 등록해 주세요.</div>';
+    return;
+  }
+  card.innerHTML = `
+    <div class="msg" style="padding:0 0 14px">시험 방식을 선택하세요 · ${available.length}개</div>
+    <div class="self-grade">
+      <button class="primary" id="btnModeW2M">단어 → 뜻</button>
+      <button class="primary" id="btnModeM2W">뜻 → 단어</button>
+    </div>
+  `;
+  document.getElementById('btnModeW2M').onclick = () => StartWordTest('w2m');
+  document.getElementById('btnModeM2W').onclick = () => StartWordTest('m2w');
+}
+
+function StartWordTest(mode){
+  _wordMode = mode;
+  _wordQueue = shuffle(words.filter(w => !w.excluded));
+  _wordIndex = 0;
+  _wordResults = [];
+  RenderWordQuestion();
+}
+
+function RenderWordQuestion(){
+  const card = document.getElementById('wordTestCard');
+  const total = _wordQueue.length;
+  if(_wordIndex >= total){
+    RenderWordReport();
+    return;
+  }
+
+  const w = _wordQueue[_wordIndex];
+  const w2m = _wordMode === 'w2m';
+  card.innerHTML = `
+    <div class="test-progress">${_wordIndex + 1} / ${total}</div>
+    <div class="prompt">
+      <div class="meaning">${Esc(w2m ? w.word : w.meaning)}</div>
+      <div class="hint">${w2m ? '이 단어의 뜻을 적으세요.' : '이 뜻에 해당하는 단어를 적으세요.'}</div>
+    </div>
+    <div class="field">
+      <input id="wordAnswer" autocomplete="off" placeholder="${w2m ? '뜻' : '단어 또는 읽는 법'}">
+    </div>
+    <div class="canvas-actions">
+      <button class="ghost" id="btnWordExclude">시험에서 제외하기</button>
+    </div>
+    <button class="primary" id="btnWordReveal">정답 확인</button>
+  `;
+
+  const input = document.getElementById('wordAnswer');
+  input.focus();
+  input.onkeydown = e => {
+    if(e.key === 'Enter' && !e.isComposing) RevealWord(w, input.value.trim());
+  };
+  document.getElementById('btnWordReveal').onclick = () => RevealWord(w, input.value.trim());
+  document.getElementById('btnWordExclude').onclick = async () => {
+    if(!confirm(`'${w.word}'을(를) 앞으로 시험에 나오지 않게 할까요?`)) return;
+    w.excluded = true;
+    await SaveWords();
+    _wordQueue.splice(_wordIndex, 1);
+    RenderWordQuestion();
+  };
+}
+
+function IsWordMatch(w, answer){
+  const n = str => ToHira((str || '').replace(/\s/g, '').toLowerCase());
+  const a = n(answer);
+  if(!a) return false;
+  if(_wordMode === 'w2m'){
+    return n(w.meaning) === a || w.meaning.split(/[,，、;/]/).some(m => n(m) === a);
+  }
+  return n(w.word) === a || (!!w.reading && n(w.reading) === a);
+}
+
+function RevealWord(w, answer){
+  const card = document.getElementById('wordTestCard');
+  const match = IsWordMatch(w, answer);
+
+  card.innerHTML = `
+    <div class="test-progress">${_wordIndex + 1} / ${_wordQueue.length}</div>
+    <div class="prompt" style="padding:16px 10px">
+      <div class="hint">내 답</div>
+      <div style="font-size:18px;margin:4px 0 16px">
+        ${Esc(answer) || '(미입력)'}
+        ${match ? '<span style="color:var(--good);font-size:12px">· 일치</span>' : ''}
+      </div>
+      <div class="reveal-han" style="font-size:32px;margin:0">${Esc(w.word)}</div>
+      <div class="hint">${Esc(w.reading)}</div>
+      <div style="font-size:18px;margin-top:8px">${Esc(w.meaning)}</div>
+    </div>
+    <div class="hint" style="text-align:center;margin-bottom:12px">정답과 맞았나요?</div>
+    <div class="self-grade">
+      <button class="bad-btn" id="btnWordWrong">틀렸어요</button>
+      <button class="good-btn" id="btnWordRight">맞았어요</button>
+    </div>
+  `;
+
+  function Grade(correct){
+    _wordResults.push({ w, answer, correct });
+    _wordIndex++;
+    RenderWordQuestion();
+  }
+  document.getElementById('btnWordRight').onclick = () => Grade(true);
+  document.getElementById('btnWordWrong').onclick = () => Grade(false);
+}
+
+function RenderWordReport(){
+  const card = document.getElementById('wordTestCard');
+  const total = _wordResults.length;
+  const correctCount = _wordResults.filter(r => r.correct).length;
+
+  if(total > 0){
+    sessions.push({
+      date: todayKey(),
+      kind: 'word',
+      mode: _wordMode,
+      total,
+      correct: correctCount,
+      items: _wordResults.map(r => ({ han: r.w.word, meaning: r.w.meaning, correct: r.correct }))
+    });
+    saveSessions();
+  }
+
+  const rows = _wordResults.map(r => `
+    <div class="result-item">
+      <div class="mark ${r.correct ? 'good' : 'bad'}">${r.correct ? '○' : '✕'}</div>
+      <div class="detail">
+        <div style="font-size:15px;color:var(--ink)">${Esc(r.w.word)} <span style="font-size:12px">${Esc(r.w.reading)}</span></div>
+        <div>${Esc(r.w.meaning)}</div>
+        <div>내 답: ${Esc(r.answer) || '-'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  card.innerHTML = `
+    <div class="summary">
+      <div class="score">${correctCount}<span>/${total}</span></div>
+    </div>
+    ${rows}
+    <div class="self-grade" style="margin-top:16px">
+      <button class="ghost" id="btnWordMode" style="padding:12px">방식 변경</button>
+      <button class="primary" id="btnWordRetry">다시 시험</button>
+    </div>
+  `;
+  document.getElementById('btnWordRetry').onclick = () => StartWordTest(_wordMode);
+  document.getElementById('btnWordMode').onclick = RenderWordTestStart;
+}
+
+document.getElementById('btnShowExcludedWords').onclick = () => ShowExcludedWords();
+
+function ShowExcludedWords(){
+  const excluded = words.filter(w => w.excluded);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+
+  const listHtml = excluded.length === 0
+    ? '<div class="empty">제외한 단어가 없습니다.</div>'
+    : excluded.map(w => `
+        <div class="entry">
+          <div class="info" style="padding-left:0">
+            <div class="word-main">${Esc(w.word)}</div>
+            <div class="meaning">${Esc(w.meaning)}</div>
+            <div>읽는 법: ${Esc(w.reading) || '-'}</div>
+          </div>
+          <button class="ghost" data-wrelease="${w.id}">해제</button>
+        </div>
+      `).join('');
+
+  overlay.innerHTML = `
+    <div class="card" style="max-width:400px;width:100%;max-height:70vh;overflow-y:auto;">
+      <div class="msg" style="padding:0 0 10px">제외한 단어 목록</div>
+      ${listHtml}
+      <button class="primary" id="excludedWordsClose" style="margin-top:12px">닫기</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('button[data-wrelease]').forEach(btn => {
+    btn.onclick = async () => {
+      const w = words.find(x => x.id === btn.dataset.wrelease);
+      if(w) w.excluded = false;
+      await SaveWords();
+      overlay.remove();
+      ShowExcludedWords();
+    };
+  });
+  overlay.querySelector('#excludedWordsClose').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+}
+
+// ===== 사전 검색 (dict.json: [한자, 뜻, 훈독, 음독], 빈도순) =====
+const _dictUrl = 'dict.json';
+const _maxResults = 30;
+let _dict = null;
+let _dictLoading = null;
+
+function LoadDict(){
+  if(_dict) return Promise.resolve(_dict);
+  if(!_dictLoading){
+    _dictLoading = fetch(_dictUrl)
+      .then(r => {
+        if(!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(j => _dict = j.d)
+      .catch(e => {
+        _dictLoading = null;
+        throw e;
+      });
+  }
+  return _dictLoading;
+}
+
+function ToHira(str){
+  return str.replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+
+// "い(きる)" → ["いきる", "い"]
+function ReadingKeys(text){
+  if(!text) return [];
+  return text.split('、').flatMap(r => [r.replace(/[()]/g, ''), r.replace(/\(.*\)/, '')]);
+}
+
+function SearchDict(query){
+  const q = query.trim();
+  if(!q) return [];
+
+  // 한자: 입력한 글자 순서대로
+  const hans = [...q].filter(ch => /\p{Script=Han}/u.test(ch));
+  if(hans.length){
+    return [...new Set(hans)].map(h => _dict.find(r => r[0] === h)).filter(Boolean);
+  }
+
+  // 가나: 훈독/음독 일치
+  if(/[\u3040-\u30ff]/.test(q)){
+    const k = ToHira(q.replace(/\s/g, ''));
+    return _dict
+      .filter(r => ReadingKeys(r[2]).includes(k) || ReadingKeys(r[3]).includes(k))
+      .slice(0, _maxResults);
+  }
+
+  // 한글: 훈음 일치 > 음 일치 > 부분 일치
+  const n = q.replace(/\s/g, '');
+  const scored = [];
+  for(const r of _dict){
+    if(!r[1]) continue;
+    const senses = r[1].split(', ').map(x => x.replace(/\s/g, ''));
+    let score = -1;
+    if(senses.includes(n)) score = 0;
+    else if(n.length === 1 && senses.some(x => x.endsWith(n))) score = 1;
+    else if(senses.some(x => x.includes(n))) score = 2;
+    if(score >= 0) scored.push({ r, score });
+  }
+  return scored
+    .sort((a, b) => a.score - b.score)
+    .slice(0, _maxResults)
+    .map(x => x.r);
+}
+
+async function RunSearch(){
+  const box = document.getElementById('searchResult');
+  const query = document.getElementById('inSearch').value;
+  if(!query.trim()){
+    box.innerHTML = '';
+    return;
+  }
+  if(!_dict) box.innerHTML = '<div class="empty">사전 불러오는 중…</div>';
+  try{
+    await LoadDict();
+  }catch(e){
+    console.error(e);
+    box.innerHTML = location.protocol === 'file:'
+      ? '<div class="empty">사전 검색은 GitHub 링크에서 사용할 수 있습니다.</div>'
+      : '<div class="empty">사전을 불러오지 못했습니다. dict.json이 같은 폴더에 있는지 확인해 주세요.</div>';
+    return;
+  }
+  RenderSearch(SearchDict(query));
+}
+
+function RenderSearch(results){
+  const box = document.getElementById('searchResult');
+  if(results.length === 0){
+    box.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>';
+    return;
+  }
+  const has = new Set(entries.map(e => e.han));
+  box.innerHTML = results.map((r, i) => `
+    <div class="entry">
+      <div class="han">${r[0]}</div>
+      <div class="info">
+        <div class="meaning">${r[1] || '(뜻 없음)'} ${has.has(r[0]) ? '<span class="tag">등록됨</span>' : ''}</div>
+        <div>훈독: ${r[2] || '-'} · 음독: ${r[3] || '-'}</div>
+      </div>
+      <button class="ghost" data-fill="${i}">채우기</button>
+      <button class="ghost" data-add="${i}">추가</button>
+    </div>
+  `).join('');
+
+  box.querySelectorAll('button[data-fill]').forEach(btn => {
+    btn.onclick = () => FillForm(results[Number(btn.dataset.fill)]);
+  });
+  box.querySelectorAll('button[data-add]').forEach(btn => {
+    btn.onclick = () => AddFromDict(results[Number(btn.dataset.add)], results);
+  });
+}
+
+function FillForm(r){
+  document.getElementById('inHan').value = r[0];
+  document.getElementById('inKun').value = r[2];
+  document.getElementById('inOn').value = r[3];
+  document.getElementById('inMeaning').value = r[1];
+  const target = document.getElementById(r[1] ? 'inHan' : 'inMeaning');
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.focus();
+}
+
+async function AddFromDict(r, results){
+  const msg = document.getElementById('saveMsg');
+  if(!r[1]){
+    FillForm(r);
+    msg.textContent = '뜻을 입력한 뒤 저장해 주세요.';
+    return;
+  }
+  if(entries.some(e => e.han === r[0]) && !confirm(`'${r[0]}'은(는) 이미 등록되어 있습니다. 한 번 더 추가할까요?`)) return;
+
+  entries.push({
+    id: Date.now().toString() + Math.random().toString(36).slice(2),
+    han: r[0],
+    kun: r[2],
+    on: r[3],
+    meaning: r[1]
+  });
+  await saveEntries();
+  RenderSearch(results);
+  msg.textContent = `'${r[0]}' 저장 완료`;
+  setTimeout(() => msg.textContent = '', 1500);
+}
+
+document.getElementById('btnSearch').onclick = RunSearch;
+document.getElementById('inSearch').onkeydown = e => {
+  if(e.key === 'Enter' && !e.isComposing) RunSearch();
+};
+
+// ===== 단어 사전 검색 (words_dict.json: [단어, 읽는 법, 영어 뜻, 다른 표기]) =====
+const _wordDictUrl = 'words_dict.json';
+const _meaningHint = '예: 등산';
+let _wordDict = null;
+let _wordDictLoading = null;
+
+function LoadWordDict(){
+  if(_wordDict) return Promise.resolve(_wordDict);
+  if(!_wordDictLoading){
+    _wordDictLoading = fetch(_wordDictUrl)
+      .then(r => {
+        if(!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(j => _wordDict = j.d)
+      .catch(e => {
+        _wordDictLoading = null;
+        throw e;
+      });
+  }
+  return _wordDictLoading;
+}
+
+// 일본어: 일치 > 앞부분 일치 > 포함 / 영어: 뜻 일치 > 포함
+function SearchWords(query){
+  const q = query.trim();
+  const scored = [];
+
+  if(/[\u3040-\u30ff\u3400-\u9fff々]/.test(q)){
+    const k = ToHira(q.replace(/\s/g, ''));
+    for(const r of _wordDict){
+      const forms = [r[0], r[1], ...(r[3] ? r[3].split('|') : [])].filter(Boolean).map(ToHira);
+      let score = -1;
+      if(forms.includes(k)) score = 0;
+      else if(forms.some(f => f.startsWith(k))) score = 1;
+      else if(forms.some(f => f.includes(k))) score = 2;
+      if(score >= 0) scored.push({ r, score });
+    }
+  } else {
+    const n = q.toLowerCase();
+    for(const r of _wordDict){
+      const terms = r[2].toLowerCase().split(/[;,]\s*/);
+      let score = -1;
+      if(terms.includes(n) || terms.includes('to ' + n)) score = 0;
+      else if(terms.some(t => t.split(/[\s()]+/).includes(n))) score = 1;
+      else if(r[2].toLowerCase().includes(n)) score = 2;
+      if(score >= 0) scored.push({ r, score });
+    }
+  }
+  return scored
+    .sort((a, b) => a.score - b.score)
+    .slice(0, _maxResults)
+    .map(x => x.r);
+}
+
+async function RunWordSearch(){
+  const box = document.getElementById('wordSearchResult');
+  const query = document.getElementById('inWordSearch').value.trim();
+  if(!query){
+    box.innerHTML = '';
+    return;
+  }
+  if(/[\uac00-\ud7a3]/.test(query)){
+    box.innerHTML = '<div class="empty">한국어 뜻 검색은 지원하지 않습니다.<br>일본어(한자·가나)나 영어로 검색해 주세요.</div>';
+    return;
+  }
+  if(!_wordDict) box.innerHTML = '<div class="empty">사전 불러오는 중…</div>';
+  try{
+    await LoadWordDict();
+  }catch(e){
+    console.error(e);
+    box.innerHTML = location.protocol === 'file:'
+      ? '<div class="empty">사전 검색은 GitHub 링크에서 사용할 수 있습니다.</div>'
+      : '<div class="empty">사전을 불러오지 못했습니다. words_dict.json이 같은 폴더에 있는지 확인해 주세요.</div>';
+    return;
+  }
+  RenderWordSearch(SearchWords(query));
+}
+
+function RenderWordSearch(results){
+  const box = document.getElementById('wordSearchResult');
+  if(results.length === 0){
+    box.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>';
+    return;
+  }
+  const has = new Set(words.map(w => w.word));
+  box.innerHTML = results.map((r, i) => `
+    <div class="entry">
+      <div class="info" style="padding-left:0">
+        <div class="word-main">${Esc(r[0])} ${has.has(r[0]) ? '<span class="tag">등록됨</span>' : ''}</div>
+        <div>${Esc(r[1]) || '-'}</div>
+        <div>${Esc(r[2])}</div>
+      </div>
+      <button class="ghost" data-wfill="${i}">채우기</button>
+    </div>
+  `).join('');
+
+  box.querySelectorAll('button[data-wfill]').forEach(btn => {
+    btn.onclick = () => FillWordForm(results[Number(btn.dataset.wfill)]);
+  });
+}
+
+// 한국어 뜻은 사전에 없어서 영어 뜻을 힌트로 보여주고 직접 입력
+function FillWordForm(r){
+  document.getElementById('inWord').value = r[0];
+  document.getElementById('inReading').value = r[1];
+  const meaning = document.getElementById('inWordMeaning');
+  meaning.value = '';
+  meaning.placeholder = `영어: ${r[2]}`;
+  meaning.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  meaning.focus();
+}
+
+document.getElementById('btnWordSearch').onclick = RunWordSearch;
+document.getElementById('inWordSearch').onkeydown = e => {
+  if(e.key === 'Enter' && !e.isComposing) RunWordSearch();
+};
+document.getElementById('inWordMeaning').onkeydown = e => {
+  if(e.key === 'Enter' && !e.isComposing) document.getElementById('btnWordSave').click();
+};
+
+// ===== Google Sheets 연동 =====
+const _clientId = '205122820015-9oe458gjdemh2hquj28llcojb95nrlsk.apps.googleusercontent.com.apps.googleusercontent.com';
+const _scope = 'https://www.googleapis.com/auth/drive.file';
+const _fileName = 'HanjaMemorizer';
+const _tabs = ['entries', 'sessions', 'words'];
+const _sheetKey = 'hanjaSheetId';
+const _syncedKey = 'hanjaSheetSynced';
+const _dirtyKey = 'hanjaSheetDirty';
+const _accountKey = 'hanjaSheetAccount';
+const _pickKey = 'hanjaSheetPick'; // 로그아웃 후 다음 로그인은 계정 선택
+
+let _tokenClient = null;
+let _token = null;
+let _tokenExp = 0;
+let _sheetId = localStorage.getItem(_sheetKey);
+let _account = null;
+let _synced = false; // 이번 접속에서 시트와 첫 동기화 완료 여부
+let _hold = false;   // 병합 중 자동 저장 보류
+let _ver = 0;
+let _pushTimer = null;
+let _refreshing = false;
+const _refreshBefore = 5 * 60 * 1000; // 만료 5분 전부터 갱신
+
+function InitAuth(){
+  _tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: _clientId,
+    scope: _scope,
+    callback: () => {}
+  });
+}
+
+function IsLogin(){
+  return !!_token && Date.now() < _tokenExp;
+}
+
+function RequestToken(prompt = ''){
+  return new Promise((resolve, reject) => {
+    if(!_tokenClient) return reject(new Error('구글 로그인 모듈을 불러오지 못했습니다.'));
+    _tokenClient.callback = r => {
+      if(r.error) return reject(new Error(r.error));
+      _token = r.access_token;
+      _tokenExp = Date.now() + (r.expires_in - 60) * 1000;
+      setTimeout(() => {
+        if(IsLogin()) return;
+        SetStatus('로그인 만료 · 화면을 클릭하면 다시 연결됩니다', true);
+        UpdateAuthUI();
+      }, _tokenExp - Date.now() + 500);
+      resolve();
+    };
+    _tokenClient.error_callback = err => reject(new Error(err.type || '로그인 취소'));
+    const hint = prompt ? undefined : (_account || localStorage.getItem(_accountKey) || undefined);
+    _tokenClient.requestAccessToken({ prompt, login_hint: hint });
+  });
+}
+
+async function Api(url, method = 'GET', body){
+  if(!IsLogin()) throw new Error('로그인이 필요합니다.');
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${_token}`, 'Content-Type': 'application/json' },
+    body: body && JSON.stringify(body)
+  });
+  if(res.status === 401){
+    _token = null;
+    throw new Error('로그인이 만료되었습니다.');
+  }
+  if(!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return res.status === 204 ? null : res.json();
+}
+
+// 앱이 만든 시트를 찾고, 없으면 생성 (다른 기기에서도 같은 시트 사용)
+async function FindOrCreate(){
+  const q = encodeURIComponent(
+    `name='${_fileName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+  const list = await Api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`);
+  if(list.files.length){
+    await EnsureTabs(list.files[0].id);
+    return list.files[0].id;
+  }
+
+  const created = await Api('https://sheets.googleapis.com/v4/spreadsheets', 'POST', {
+    properties: { title: _fileName },
+    sheets: _tabs.map(t => ({ properties: { title: t } }))
+  });
+  return created.spreadsheetId;
+}
+
+// 기존 시트에 새로 생긴 탭 추가
+async function EnsureTabs(id){
+  const info = await Api(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties.title`);
+  const have = info.sheets.map(x => x.properties.title);
+  const missing = _tabs.filter(t => !have.includes(t));
+  if(missing.length === 0) return;
+  await Api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
+    requests: missing.map(t => ({ addSheet: { properties: { title: t } } }))
+  });
+}
+
+async function SheetSave(data){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${_sheetId}/values`;
+  await Api(`${url}:batchClear`, 'POST', { ranges: _tabs });
+  await Api(`${url}:batchUpdate`, 'POST', {
+    valueInputOption: 'RAW',
+    data: _tabs.map(t => ({ range: t, values: ToRows(data[t] || []) }))
+  });
+}
+
+async function SheetLoad(){
+  const ranges = _tabs.map(t => `ranges=${t}`).join('&');
+  const res = await Api(
+    `https://sheets.googleapis.com/v4/spreadsheets/${_sheetId}/values:batchGet?${ranges}&valueRenderOption=UNFORMATTED_VALUE`);
+  const data = {};
+  res.valueRanges.forEach((v, i) => data[_tabs[i]] = ToObjects(v.values || []));
+  return {
+    entries: NormalizeEntries(data.entries),
+    sessions: NormalizeSessions(data.sessions),
+    words: NormalizeWords(data.words)
+  };
+}
+
+// 1행 = 헤더(키), 이후 행 = 항목
+function ToRows(items){
+  if(!items.length) return [];
+  const keys = [...new Set(items.flatMap(Object.keys))];
+  return [keys, ...items.map(o => keys.map(k => ToCell(o[k])))];
+}
+
+function ToCell(v){
+  if(v == null) return '';
+  return typeof v === 'object' ? JSON.stringify(v) : v;
+}
+
+function ToObjects([keys, ...rows]){
+  if(!keys) return [];
+  return rows.map(r => Object.fromEntries(keys.map((k, i) => [k, FromCell(r[i])])));
+}
+
+function FromCell(v){
+  if(typeof v === 'string' && /^[\[{]/.test(v)){
+    try{ return JSON.parse(v); }catch(e){}
+  }
+  return v === '' ? undefined : v;
+}
+
+function NormalizeEntries(list){
+  return list
+    .filter(e => e.han && e.meaning)
+    .map(e => ({
+      id: e.id ? String(e.id) : Date.now().toString() + Math.random().toString(36).slice(2),
+      han: String(e.han),
+      on: e.on != null ? String(e.on) : '',
+      kun: e.kun != null ? String(e.kun) : '',
+      meaning: String(e.meaning),
+      excluded: e.excluded === true
+    }));
+}
+
+function NormalizeSessions(list){
+  return list
+    .filter(s => s.date)
+    .map(s => ({ ...s, items: Array.isArray(s.items) ? s.items : [] }));
+}
+
+function MarkDirty(){
+  localStorage.setItem(_dirtyKey, '1');
+  _ver++;
+  if(_synced) SchedulePush();
+}
+
+function SchedulePush(delay = 1500){
+  clearTimeout(_pushTimer);
+  if(_hold) return;
+  if(!IsLogin()){
+    SetStatus('로그인 만료 · 화면을 클릭하면 다시 연결 후 저장됩니다', true);
+    UpdateAuthUI();
+    return;
+  }
+  SetStatus('저장 대기…');
+  _pushTimer = setTimeout(Push, delay);
+}
+
+async function Push(){
+  if(!_sheetId || !IsLogin()) return;
+  const ver = _ver;
+  SetStatus('저장 중…');
+  try{
+    await SheetSave({ entries, sessions, words });
+    if(ver === _ver) localStorage.removeItem(_dirtyKey);
+    SetStatus('시트에 저장됨');
+  }catch(e){
+    console.error(e);
+    SetStatus('저장 실패 · ' + e.message, true);
+    UpdateAuthUI();
+  }
+}
+
+async function GetEmail(){
+  const r = await Api('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)');
+  return r.user.emailAddress;
+}
+
+async function Login(prompt){
+  if(prompt === undefined) prompt = localStorage.getItem(_pickKey) ? 'select_account' : '';
+  try{
+    SetStatus('로그인 중…');
+    await RequestToken(prompt);
+    localStorage.removeItem(_pickKey);
+    const email = await GetEmail();
+    const prev = localStorage.getItem(_accountKey);
+    const changed = !!prev && prev !== email;
+
+    // 같은 계정 재로그인
+    if(_synced && !changed){
+      _account = email;
+      if(localStorage.getItem(_dirtyKey)) await Push();
+      else SetStatus('시트 연결됨');
+      return;
+    }
+
+    let mode;
+    if(changed){
+      mode = await AskAccountChange(prev, email);
+      if(mode === 'cancel'){
+        Logout();
+        SetStatus('계정 전환 취소 · 로그아웃됨');
+        return;
+      }
+    }
+
+    _synced = false;
+    _account = email;
+    localStorage.setItem(_accountKey, email);
+    UpdateAuthUI();
+    _sheetId = await FindOrCreate();
+    localStorage.setItem(_sheetKey, _sheetId);
+    await FirstSync(mode);
+  }catch(e){
+    console.error(e);
+    SetStatus('로그인 실패 · ' + e.message, true);
+  }finally{
+    UpdateAuthUI();
+  }
+}
+
+async function SwitchAccount(){
+  clearTimeout(_pushTimer);
+  if(IsLogin() && localStorage.getItem(_dirtyKey)) await Push(); // 현재 계정에 먼저 저장
+  await Login('select_account');
+}
+
+function AskAccountChange(prev, email){
+  return new Promise(resolve => {
+    const dirty = !!localStorage.getItem(_dirtyKey);
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(43,38,32,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+    overlay.innerHTML = `
+      <div class="card" style="max-width:360px;width:100%;">
+        <div class="msg" style="padding:0 0 12px;word-break:break-all;">
+          계정이 바뀌었습니다<br>${prev} → ${email}<br>현재 기기의 데이터를 어떻게 할까요?
+          ${dirty ? '<br><span style="color:var(--bad)">시트에 저장되지 않은 변경이 있습니다.</span>' : ''}
+        </div>
+        <button class="primary" data-mode="replace">새 계정 시트로 덮어쓰기</button>
+        <div class="hint" style="font-size:11px;color:var(--ink-soft);margin:4px 0 12px;">새 계정 시트가 비어 있으면 빈 상태로 시작합니다.</div>
+        <button class="ghost" data-mode="merge" style="width:100%;padding:10px;margin-bottom:8px;">현재 데이터를 새 계정에 병합</button>
+        <button class="ghost" data-mode="cancel" style="width:100%;padding:10px;">취소</button>
+      </div>
+    `;
+    overlay.querySelectorAll('button[data-mode]').forEach(btn => {
+      btn.onclick = () => {
+        overlay.remove();
+        resolve(btn.dataset.mode);
+      };
+    });
+    document.body.appendChild(overlay);
+  });
+}
+
+// mode: undefined(자동) | 'replace' | 'merge'
+async function FirstSync(mode){
+  SetStatus('시트 불러오는 중…');
+  const data = await SheetLoad();
+  const hasSheet = data.entries.length > 0 || data.sessions.length > 0 || data.words.length > 0;
+  const known = localStorage.getItem(_syncedKey) === _sheetId;
+  const dirty = !!localStorage.getItem(_dirtyKey);
+  localStorage.setItem(_syncedKey, _sheetId);
+  _synced = true;
+
+  if(mode === 'replace'){
+    ReplaceLocal(data);
+    SetStatus('시트에서 불러옴');
+    return;
+  }
+  if(!hasSheet){
+    await Push();
+    return;
+  }
+  if(mode !== 'merge' && known && !dirty){
+    ReplaceLocal(data);
+    SetStatus('시트에서 불러옴');
+    return;
+  }
+
+  // 처음 연결한 기기거나 저장 안 된 변경이 있으면 병합 (다른 내용은 선택 UI)
+  _hold = true;
+  SetStatus('시트 데이터 병합 중…');
+  await MergeWords(data.words);
+  await mergeSessions(data.sessions);
+  processImport(data.entries);
+}
+
+async function PullSheet(){
+  if(!confirm('시트 데이터로 현재 데이터를 덮어쓸까요?')) return;
+  try{
+    SetStatus('시트 불러오는 중…');
+    ReplaceLocal(await SheetLoad());
+    SetStatus('시트에서 불러옴');
+  }catch(e){
+    console.error(e);
+    SetStatus('불러오기 실패 · ' + e.message, true);
+    UpdateAuthUI();
+  }
+}
+
+function ReplaceLocal(data){
+  clearTimeout(_pushTimer);
+  entries = data.entries;
+  sessions = data.sessions;
+  words = data.words;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  localStorage.setItem(WORDS_KEY, JSON.stringify(words));
+  localStorage.removeItem(_dirtyKey);
+  if(viewList.style.display !== 'none') renderList();
+  if(viewCalendar.style.display !== 'none') renderCalendar();
+  if(viewWordList.style.display !== 'none') RenderWordList();
+}
+
+function Logout(){
+  clearTimeout(_pushTimer);
+  if(_token) google.accounts.oauth2.revoke(_token);
+  _token = null;
+  _tokenExp = 0;
+  _synced = false;
+  _account = null;
+  localStorage.setItem(_pickKey, '1');
+  SetStatus('로그인하지 않음');
+  UpdateAuthUI();
+}
+
+function UpdateAuthUI(){
+  const on = IsLogin();
+  const btnLogin = document.getElementById('btnLogin');
+  btnLogin.style.display = on ? 'none' : '';
+  btnLogin.textContent = _synced ? '다시 로그인' : '구글 로그인';
+  document.getElementById('btnPull').style.display = on && _synced ? '' : 'none';
+  document.getElementById('btnSwitch').style.display = on ? '' : 'none';
+  document.getElementById('btnLogout').style.display = on ? '' : 'none';
+}
+
+function SetStatus(text, warn = false){
+  const el = document.getElementById('syncStatus');
+  el.textContent = (_account && IsLogin() ? `${_account} · ` : '') + text;
+  el.classList.toggle('warn', warn);
+}
+
+// 토큰 자동 갱신: 팝업 차단을 피하려고 유저 클릭 시점에 재발급
+function NeedRefresh(){
+  return _synced && _tokenClient && !_refreshing && _tokenExp - Date.now() < _refreshBefore;
+}
+
+async function RefreshToken(){
+  _refreshing = true;
+  try{
+    await RequestToken();
+    UpdateAuthUI();
+    if(localStorage.getItem(_dirtyKey)) SchedulePush(0);
+    else SetStatus('시트 연결됨');
+  }catch(e){
+    console.error(e);
+  }finally{
+    _refreshing = false;
+  }
+}
+
+document.addEventListener('click', e => {
+  if(!NeedRefresh()) return;
+  if(e.target.closest('#drawCanvas, #btnLogin, #btnSwitch, #btnLogout')) return;
+  RefreshToken();
+}, true);
+
+document.getElementById('btnLogin').onclick = () => Login();
+document.getElementById('btnSwitch').onclick = SwitchAccount;
+document.getElementById('btnPull').onclick = PullSheet;
+document.getElementById('btnLogout').onclick = Logout;
+
+window.addEventListener('beforeunload', e => {
+  if(_synced && localStorage.getItem(_dirtyKey)){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
 (async () => {
   await loadEntries();
   await loadSessions();
+  LoadWords();
+  SetKind(_kind);
+  UpdateAuthUI();
+  if(location.protocol === 'file:') SetStatus('구글 연동은 GitHub 링크에서 사용할 수 있습니다', true);
 })();
 </script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="InitAuth()"></script>
 </body>
 </html>
