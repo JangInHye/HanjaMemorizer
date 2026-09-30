@@ -493,7 +493,7 @@
 <div class="wrap">
   <header>
     <h1>한자 암기장</h1>
-    <div class="sub">오류 및 개선 사항은 <a href="mailto:dlstjswlw@gmail.com" style="color:inherit">dlstjswlw@gmail.com</a> 으로 메일 보내주세요.</div>
+    <div class="sub">오류 및 개선 사항 요청은 Discord - 냉면#6848 로 연락 부탁드립니다.</div>
   </header>
 
   <div class="sync-bar">
@@ -1411,6 +1411,30 @@ function Esc(str){
   return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 }
 
+// 한글 IME는 조합 중 Enter가 isComposing으로 들어와 무시되므로 조합 종료 후 실행
+function OnEnter(input, fn){
+  let pending = false;
+  let last = 0;
+  const run = () => {
+    if(Date.now() - last < 200) return; // 브라우저별 Enter 중복 방지
+    last = Date.now();
+    fn();
+  };
+  input.onkeydown = e => {
+    if(e.key !== 'Enter') return;
+    if(e.isComposing || e.keyCode === 229){
+      pending = true;
+      return;
+    }
+    run();
+  };
+  input.oncompositionend = () => {
+    if(!pending) return;
+    pending = false;
+    setTimeout(run);
+  };
+}
+
 function KindLabel(s){
   if(s.kind !== 'word') return '한자';
   return s.mode === 'm2w' ? '단어(뜻→단어)' : '단어(단어→뜻)';
@@ -1639,9 +1663,7 @@ function RenderWordQuestion(){
 
   const input = document.getElementById('wordAnswer');
   input.focus();
-  input.onkeydown = e => {
-    if(e.key === 'Enter' && !e.isComposing) RevealWord(w, input.value.trim());
-  };
+  OnEnter(input, () => RevealWord(w, input.value.trim()));
   document.getElementById('btnWordReveal').onclick = () => RevealWord(w, input.value.trim());
   document.getElementById('btnWordExclude').onclick = async () => {
     if(!confirm(`'${w.word}'을(를) 앞으로 시험에 나오지 않게 할까요?`)) return;
@@ -1830,11 +1852,11 @@ function SearchDict(query){
   }
 
   // 한글: 훈음 일치 > 음 일치 > 부분 일치
-  const n = q.replace(/\s/g, '');
+  const n = q.replace(/\s/g, '').normalize('NFC');
   const scored = [];
   for(const r of _dict){
     if(!r[1]) continue;
-    const senses = r[1].split(', ').map(x => x.replace(/\s/g, ''));
+    const senses = r[1].normalize('NFC').split(/[,，、]/).map(x => x.replace(/\s/g, ''));
     let score = -1;
     if(senses.includes(n)) score = 0;
     else if(n.length === 1 && senses.some(x => x.endsWith(n))) score = 1;
@@ -1927,9 +1949,7 @@ async function AddFromDict(r, results){
 }
 
 document.getElementById('btnSearch').onclick = RunSearch;
-document.getElementById('inSearch').onkeydown = e => {
-  if(e.key === 'Enter' && !e.isComposing) RunSearch();
-};
+OnEnter(document.getElementById('inSearch'), RunSearch);
 
 // ===== 단어 사전 검색 (words_dict.json: [단어, 읽는 법, 영어 뜻, 다른 표기]) =====
 const _wordDictUrl = 'words_dict.json';
@@ -2045,12 +2065,8 @@ function FillWordForm(r){
 }
 
 document.getElementById('btnWordSearch').onclick = RunWordSearch;
-document.getElementById('inWordSearch').onkeydown = e => {
-  if(e.key === 'Enter' && !e.isComposing) RunWordSearch();
-};
-document.getElementById('inWordMeaning').onkeydown = e => {
-  if(e.key === 'Enter' && !e.isComposing) document.getElementById('btnWordSave').click();
-};
+OnEnter(document.getElementById('inWordSearch'), RunWordSearch);
+OnEnter(document.getElementById('inWordMeaning'), () => document.getElementById('btnWordSave').click());
 
 // ===== Google Sheets 연동 =====
 const _clientId = '205122820015-9oe458gjdemh2hquj28llcojb95nrlsk.apps.googleusercontent.com';
