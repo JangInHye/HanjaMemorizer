@@ -277,6 +277,74 @@
     font-size:20px;
     color:var(--ink-soft);
   }
+  /* test start / choice */
+  .count-grid{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+  }
+  .count-grid button{
+    padding:12px 0;
+    font-size:15px;
+  }
+  .count-grid button:disabled{
+    opacity:.4;
+    cursor:default;
+  }
+  .choices{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  button.choice{
+    width:100%;
+    padding:12px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:15px;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  button.choice.han{
+    font-size:26px;
+    padding:6px;
+  }
+  button.choice:disabled{cursor:default;}
+  button.choice.right{
+    border-color:var(--good);
+    color:var(--good);
+    background:#eef4ef;
+  }
+  button.choice.wrong{
+    border-color:var(--bad);
+    color:var(--bad);
+    background:#fbf3ea;
+  }
+  .choice-answer{
+    text-align:center;
+    margin:14px 0 10px;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:80px;
+    transform:translateX(-50%);
+    background:var(--good);
+    color:#fff;
+    padding:10px 20px;
+    border-radius:20px;
+    font-size:14px;
+    z-index:1100;
+    animation:toastIn .2s ease-out;
+  }
+  @keyframes toastIn{
+    from{opacity:0;transform:translate(-50%, 8px);}
+    to{opacity:1;transform:translate(-50%, 0);}
+  }
   .msg{
     text-align:center;
     color:var(--ink-soft);
@@ -653,11 +721,11 @@
 <div class="policy-links">
   <a href="privacy.html" target="_blank">개인정보처리방침</a> ｜ <a href="terms.html" target="_blank">서비스 약관</a> ｜ <a href="#" id="linkNotes">수정 사항</a>
 </div>
-<div class="version-tag">ver.1.5</div>
+<div class="version-tag">ver.1.6</div>
 
 <!-- 수정 사항 (read_me) -->
 <script type="text/plain" id="readMe">
-2026.10.01 ver.1.5
+2026.10.22 ver.1.6
 
 <주의 사항>
 - 본인이 원하는 한자를 추가해서 암기할 수 있도록 하는 암기장 프로그램입니다.
@@ -669,6 +737,14 @@
 
 <연락>
 오류 및 기능 피드백은 dlstjswlw@gmail.com 부탁드립니다.
+
+<ver.1.6 수정 사항>
+- 한자 시험 시작 시 쓰기 / 객관식 선택
+- 문제 수 선택 (5, 10, 20, 30)
+- 객관식 시험: 뜻 또는 한자를 보고 5개 보기 중 선택
+- 정답이면 바로 다음 문제, 오답이면 정답 확인 후 다음으로
+- 달력에 한자 객관식 시험 구분 표시
+- 단어 시험에도 문제 수 선택과 객관식(단어 또는 뜻을 보고 5개 보기 중 선택) 추가
 
 <ver.1.5 수정 사항>
 - 일본어/중국어 탭 추가 (언어별로 등록·목록·시험·달력 분리)
@@ -717,6 +793,12 @@ let calMonth = new Date().getMonth();
 let selectedDate = null;
 const PAGE_SIZE = 100;
 let listPage = 0;
+
+// 한자 시험
+const _testCounts = [5, 10, 20, 30];
+const _choiceCount = 5;
+let _testType = 'write'; // write: 쓰기, choice: 객관식
+let _testCount = 10;
 
 const viewAdd = document.getElementById('viewAdd');
 const viewList = document.getElementById('viewList');
@@ -776,6 +858,14 @@ function ShowNotes(){
   document.body.appendChild(overlay);
   overlay.querySelector('#notesClose').onclick = () => overlay.remove();
   overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+}
+
+function ShowToast(text){
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = text;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 900);
 }
 
 function showExcludedList(){
@@ -1207,16 +1297,81 @@ function shuffle(arr){
   return a;
 }
 
+function TestPool(){
+  return Mine(entries).filter(e => !e.excluded);
+}
+
+function TypeLabel(type){
+  return type === 'choice' ? '객관식' : '쓰기';
+}
+
+// 시험 종류 선택
 function startTest(){
   const card = document.getElementById('testCard');
-  const available = Mine(entries).filter(e => !e.excluded);
-  if(available.length === 0){
+  testQueue = [];
+  const total = TestPool().length;
+  if(total === 0){
     card.innerHTML = '<div class="empty">시험할 한자가 없습니다.<br>먼저 단어를 등록해 주세요.</div>';
     return;
   }
-  testQueue = shuffle(available);
+  card.innerHTML = `
+    <div class="msg" style="padding:0 0 14px">시험 종류를 선택하세요 · ${total}개</div>
+    <div class="self-grade">
+      <button class="primary" data-type="write">쓰기</button>
+      <button class="primary" data-type="choice">객관식</button>
+    </div>
+  `;
+  card.querySelectorAll('button[data-type]').forEach(btn => {
+    btn.onclick = () => RenderCountSelect(btn.dataset.type);
+  });
+}
+
+// 문제 수 버튼: 등록 수를 넘는 버튼은 전체를 덮는 가장 작은 것만 남김
+function CountGridHtml(total){
+  const cover = _testCounts.find(n => n >= total);
+  return `
+    <div class="count-grid">
+      ${_testCounts.map(n => `
+        <button class="ghost" data-count="${n}" ${n > total && n !== cover ? 'disabled' : ''}>${n}</button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function RenderCountSelect(type){
+  _testType = type;
+  const card = document.getElementById('testCard');
+  const total = TestPool().length;
+  card.innerHTML = `
+    <div class="msg" style="padding:0 0 14px">${TypeLabel(type)} · 문제 수를 선택하세요 (등록 ${total}개)</div>
+    ${CountGridHtml(total)}
+    <button class="ghost" id="btnTestBack" style="width:100%;padding:10px;margin-top:12px">뒤로</button>
+  `;
+  card.querySelectorAll('button[data-count]').forEach(btn => {
+    btn.onclick = () => RunTest(Number(btn.dataset.count));
+  });
+  document.getElementById('btnTestBack').onclick = startTest;
+}
+
+function RunTest(count){
+  _testCount = count;
+  testQueue = shuffle(TestPool()).slice(0, count);
   testIndex = 0;
   testResults = [];
+  renderQuestion();
+}
+
+function NextQuestion(){
+  testIndex++;
+  renderQuestion();
+}
+
+async function ExcludeCurrent(item){
+  const ok = confirm(`'${item.han}'을(를) 앞으로 시험에 나오지 않게 할까요?`);
+  if(!ok) return;
+  item.excluded = true;
+  await saveEntries();
+  testQueue.splice(testIndex, 1);
   renderQuestion();
 }
 
@@ -1230,6 +1385,11 @@ function renderQuestion(){
   }
 
   const item = testQueue[testIndex];
+  if(_testType === 'choice'){
+    RenderChoice(item);
+    return;
+  }
+
   card.innerHTML = `
     <div class="test-progress">${testIndex + 1} / ${total}</div>
     <div class="prompt">
@@ -1250,14 +1410,76 @@ function renderQuestion(){
   setupCanvas(document.getElementById('drawCanvas'));
   document.getElementById('btnClear').onclick = () => clearCanvas();
   document.getElementById('btnReveal').onclick = () => revealAnswer(item);
-  document.getElementById('btnExclude').onclick = async () => {
-    const ok = confirm(`'${item.han}'을(를) 앞으로 시험에 나오지 않게 할까요?`);
-    if(!ok) return;
-    item.excluded = true;
-    await saveEntries();
-    testQueue.splice(testIndex, 1);
-    renderQuestion();
-  };
+  document.getElementById('btnExclude').onclick = () => ExcludeCurrent(item);
+}
+
+// 오답 보기: 한자·뜻이 정답과 겹치지 않는 항목만 (제외 항목도 보기로는 사용)
+function PickWrong(item, count){
+  const hans = new Set([item.han]);
+  const meanings = new Set([item.meaning]);
+  return shuffle(Mine(entries)).filter(e => {
+    if(hans.has(e.han) || meanings.has(e.meaning)) return false;
+    hans.add(e.han);
+    meanings.add(e.meaning);
+    return true;
+  }).slice(0, count);
+}
+
+// 객관식: 문제마다 뜻 → 한자 / 한자 → 뜻 랜덤
+function RenderChoice(item){
+  const card = document.getElementById('testCard');
+  const queue = testQueue;
+  const showHan = Math.random() < 0.5;
+  const options = shuffle([item, ...PickWrong(item, _choiceCount - 1)]);
+  const label = e => Esc(showHan ? e.meaning : e.han);
+
+  card.innerHTML = `
+    <div class="test-progress">${testIndex + 1} / ${queue.length}</div>
+    <div class="prompt" style="padding:20px 10px">
+      ${showHan
+        ? `<div class="reveal-han" style="margin:0 0 6px">${Esc(item.han)}</div>`
+        : `<div class="meaning">${Esc(item.meaning)}</div>`}
+      <div class="hint">${showHan ? '이 한자의 뜻을 고르세요.' : '이 뜻에 해당하는 한자를 고르세요.'}</div>
+    </div>
+    <div class="choices">
+      ${options.map((o, i) => `<button class="choice ${showHan ? '' : 'han'}" data-i="${i}">${label(o)}</button>`).join('')}
+    </div>
+    <div id="choiceNext"></div>
+    <div class="canvas-actions" style="margin-top:12px">
+      <button class="ghost" id="btnExclude">시험에서 제외하기</button>
+    </div>
+  `;
+
+  const btns = [...card.querySelectorAll('button.choice')];
+  const btnExclude = document.getElementById('btnExclude');
+  btnExclude.onclick = () => ExcludeCurrent(item);
+
+  btns.forEach(btn => {
+    btn.onclick = () => {
+      const pick = options[Number(btn.dataset.i)];
+      const correct = pick === item;
+      btns.forEach(b => b.disabled = true);
+      btnExclude.disabled = true;
+      btns[options.indexOf(item)].classList.add('right');
+      testResults.push({ item, correct, pick: showHan ? pick.meaning : pick.han });
+
+      if(correct){
+        ShowToast('정답입니다!');
+        setTimeout(() => { if(testQueue === queue) NextQuestion(); }, 800); // 도중에 탭 이동 시 무시
+        return;
+      }
+
+      btn.classList.add('wrong');
+      document.getElementById('choiceNext').innerHTML = `
+        <div class="choice-answer">
+          정답: <span style="font-size:20px;color:var(--seal)">${Esc(item.han)}</span> · ${Esc(item.meaning)}<br>
+          ${ReadText(item)}
+        </div>
+        <button class="primary" id="btnChoiceNext">다음으로</button>
+      `;
+      document.getElementById('btnChoiceNext').onclick = NextQuestion;
+    };
+  });
 }
 
 let canvasCtx = null;
@@ -1344,8 +1566,7 @@ function revealAnswer(item){
 
   function grade(correct){
     testResults.push({ item, drawingImage, correct });
-    testIndex++;
-    renderQuestion();
+    NextQuestion();
   }
   document.getElementById('btnRight').onclick = () => grade(true);
   document.getElementById('btnWrong').onclick = () => grade(false);
@@ -1356,25 +1577,31 @@ function renderReport(){
   const total = testResults.length;
   const correctCount = testResults.filter(r => r.correct).length;
 
-  sessions.push({
-    date: todayKey(),
-    lang: _lang,
-    total,
-    correct: correctCount,
-    items: testResults.map(r => ({
-      han: r.item.han,
-      meaning: r.item.meaning,
-      correct: r.correct
-    }))
-  });
-  saveSessions();
+  if(total > 0){
+    sessions.push({
+      date: todayKey(),
+      lang: _lang,
+      mode: _testType,
+      total,
+      correct: correctCount,
+      items: testResults.map(r => ({
+        han: r.item.han,
+        meaning: r.item.meaning,
+        correct: r.correct
+      }))
+    });
+    saveSessions();
+  }
 
   const rows = testResults.map(r => `
     <div class="result-item">
       <div class="mark ${r.correct ? 'good' : 'bad'}">${r.correct ? '○' : '✕'}</div>
-      <img class="han-answer" src="${r.drawingImage}">
-      <div class="detail">${r.item.meaning} (${ReadText(r.item)})</div>
-      ${r.correct ? '' : `<div class="correct-han">${r.item.han}</div>`}
+      ${r.drawingImage ? `<img class="han-answer" src="${r.drawingImage}">` : ''}
+      <div class="detail">
+        ${r.item.meaning} (${ReadText(r.item)})
+        ${r.correct || r.drawingImage ? '' : `<div>내 답: ${Esc(r.pick)}</div>`}
+      </div>
+      ${r.correct && r.drawingImage ? '' : `<div class="correct-han">${r.item.han}</div>`}
     </div>
   `).join('');
 
@@ -1383,9 +1610,13 @@ function renderReport(){
       <div class="score">${correctCount}<span>/${total}</span></div>
     </div>
     ${rows}
-    <button class="primary" id="btnRetry" style="margin-top:16px">다시 시험</button>
+    <div class="self-grade" style="margin-top:16px">
+      <button class="ghost" id="btnTestMode" style="padding:12px">방식 변경</button>
+      <button class="primary" id="btnRetry">다시 시험</button>
+    </div>
   `;
-  document.getElementById('btnRetry').onclick = startTest;
+  document.getElementById('btnRetry').onclick = () => RunTest(_testCount);
+  document.getElementById('btnTestMode').onclick = startTest;
 }
 
 function renderCalendar(){
@@ -1601,7 +1832,8 @@ function OnEnter(input, fn){
 }
 
 function KindLabel(s){
-  if(s.kind !== 'word') return '한자';
+  if(s.kind !== 'word') return s.mode === 'choice' ? '한자(객관식)' : '한자';
+  if(s.mode === 'choice') return '단어(객관식)';
   return s.mode === 'm2w' ? '단어(뜻→단어)' : '단어(단어→뜻)';
 }
 
@@ -1811,30 +2043,136 @@ function ShowEditWord(id){
 }
 
 // --- 시험 ---
+const _wordModeText = { w2m: '단어 → 뜻', m2w: '뜻 → 단어', choice: '객관식' };
+let _wordCount = 10;
+
+function WordPool(){
+  return Mine(words).filter(w => !w.excluded);
+}
+
+// 시험 방식 선택
 function RenderWordTestStart(){
   const card = document.getElementById('wordTestCard');
-  const available = Mine(words).filter(w => !w.excluded);
-  if(available.length === 0){
+  _wordQueue = [];
+  const total = WordPool().length;
+  if(total === 0){
     card.innerHTML = '<div class="empty">시험할 단어가 없습니다.<br>먼저 단어를 등록해 주세요.</div>';
     return;
   }
   card.innerHTML = `
-    <div class="msg" style="padding:0 0 14px">시험 방식을 선택하세요 · ${available.length}개</div>
+    <div class="msg" style="padding:0 0 14px">시험 방식을 선택하세요 · ${total}개</div>
     <div class="self-grade">
-      <button class="primary" id="btnModeW2M">단어 → 뜻</button>
-      <button class="primary" id="btnModeM2W">뜻 → 단어</button>
+      ${Object.keys(_wordModeText).map(m => `<button class="primary" data-wmode="${m}">${_wordModeText[m]}</button>`).join('')}
     </div>
   `;
-  document.getElementById('btnModeW2M').onclick = () => StartWordTest('w2m');
-  document.getElementById('btnModeM2W').onclick = () => StartWordTest('m2w');
+  card.querySelectorAll('button[data-wmode]').forEach(btn => {
+    btn.onclick = () => RenderWordCount(btn.dataset.wmode);
+  });
 }
 
-function StartWordTest(mode){
+function RenderWordCount(mode){
   _wordMode = mode;
-  _wordQueue = shuffle(Mine(words).filter(w => !w.excluded));
+  const card = document.getElementById('wordTestCard');
+  const total = WordPool().length;
+  card.innerHTML = `
+    <div class="msg" style="padding:0 0 14px">${_wordModeText[mode]} · 문제 수를 선택하세요 (등록 ${total}개)</div>
+    ${CountGridHtml(total)}
+    <button class="ghost" id="btnWordBack" style="width:100%;padding:10px;margin-top:12px">뒤로</button>
+  `;
+  card.querySelectorAll('button[data-count]').forEach(btn => {
+    btn.onclick = () => StartWordTest(Number(btn.dataset.count));
+  });
+  document.getElementById('btnWordBack').onclick = RenderWordTestStart;
+}
+
+function StartWordTest(count){
+  _wordCount = count;
+  _wordQueue = shuffle(WordPool()).slice(0, count);
   _wordIndex = 0;
   _wordResults = [];
   RenderWordQuestion();
+}
+
+function NextWord(){
+  _wordIndex++;
+  RenderWordQuestion();
+}
+
+async function ExcludeWord(w){
+  if(!confirm(`'${w.word}'을(를) 앞으로 시험에 나오지 않게 할까요?`)) return;
+  w.excluded = true;
+  await SaveWords();
+  _wordQueue.splice(_wordIndex, 1);
+  RenderWordQuestion();
+}
+
+// 오답 보기: 단어·뜻이 정답과 겹치지 않는 항목만 (제외 항목도 보기로는 사용)
+function PickWrongWords(w, count){
+  const forms = new Set([w.word]);
+  const meanings = new Set([w.meaning]);
+  return shuffle(Mine(words)).filter(x => {
+    if(forms.has(x.word) || meanings.has(x.meaning)) return false;
+    forms.add(x.word);
+    meanings.add(x.meaning);
+    return true;
+  }).slice(0, count);
+}
+
+// 객관식: 문제마다 단어 → 뜻 / 뜻 → 단어 랜덤
+function RenderWordChoice(w){
+  const card = document.getElementById('wordTestCard');
+  const queue = _wordQueue;
+  const showWord = Math.random() < 0.5;
+  const options = shuffle([w, ...PickWrongWords(w, _choiceCount - 1)]);
+  const label = x => Esc(showWord ? x.meaning : x.word);
+
+  card.innerHTML = `
+    <div class="test-progress">${_wordIndex + 1} / ${queue.length}</div>
+    <div class="prompt" style="padding:20px 10px">
+      ${showWord
+        ? `<div class="reveal-han" style="font-size:32px;margin:0 0 6px">${Esc(w.word)}</div>`
+        : `<div class="meaning">${Esc(w.meaning)}</div>`}
+      <div class="hint">${showWord ? '이 단어의 뜻을 고르세요.' : '이 뜻에 해당하는 단어를 고르세요.'}</div>
+    </div>
+    <div class="choices">
+      ${options.map((o, i) => `<button class="choice" data-i="${i}" ${showWord ? '' : 'style="font-size:20px"'}>${label(o)}</button>`).join('')}
+    </div>
+    <div id="wordChoiceNext"></div>
+    <div class="canvas-actions" style="margin-top:12px">
+      <button class="ghost" id="btnWordExclude">시험에서 제외하기</button>
+    </div>
+  `;
+
+  const btns = [...card.querySelectorAll('button.choice')];
+  const btnExclude = document.getElementById('btnWordExclude');
+  btnExclude.onclick = () => ExcludeWord(w);
+
+  btns.forEach(btn => {
+    btn.onclick = () => {
+      const pick = options[Number(btn.dataset.i)];
+      const correct = pick === w;
+      btns.forEach(b => b.disabled = true);
+      btnExclude.disabled = true;
+      btns[options.indexOf(w)].classList.add('right');
+      _wordResults.push({ w, answer: showWord ? pick.meaning : pick.word, correct });
+
+      if(correct){
+        ShowToast('정답입니다!');
+        setTimeout(() => { if(_wordQueue === queue) NextWord(); }, 800); // 도중에 탭 이동 시 무시
+        return;
+      }
+
+      btn.classList.add('wrong');
+      document.getElementById('wordChoiceNext').innerHTML = `
+        <div class="choice-answer">
+          정답: <span style="font-size:20px;color:var(--seal)">${Esc(w.word)}</span>
+          ${w.reading ? `(${Esc(w.reading)})` : ''} · ${Esc(w.meaning)}
+        </div>
+        <button class="primary" id="btnWordChoiceNext">다음으로</button>
+      `;
+      document.getElementById('btnWordChoiceNext').onclick = NextWord;
+    };
+  });
 }
 
 function RenderWordQuestion(){
@@ -1846,6 +2184,11 @@ function RenderWordQuestion(){
   }
 
   const w = _wordQueue[_wordIndex];
+  if(_wordMode === 'choice'){
+    RenderWordChoice(w);
+    return;
+  }
+
   const w2m = _wordMode === 'w2m';
   card.innerHTML = `
     <div class="test-progress">${_wordIndex + 1} / ${total}</div>
@@ -1866,13 +2209,7 @@ function RenderWordQuestion(){
   input.focus();
   OnEnter(input, () => RevealWord(w, input.value.trim()));
   document.getElementById('btnWordReveal').onclick = () => RevealWord(w, input.value.trim());
-  document.getElementById('btnWordExclude').onclick = async () => {
-    if(!confirm(`'${w.word}'을(를) 앞으로 시험에 나오지 않게 할까요?`)) return;
-    w.excluded = true;
-    await SaveWords();
-    _wordQueue.splice(_wordIndex, 1);
-    RenderWordQuestion();
-  };
+  document.getElementById('btnWordExclude').onclick = () => ExcludeWord(w);
 }
 
 function IsWordMatch(w, answer){
@@ -1911,8 +2248,7 @@ function RevealWord(w, answer){
 
   function Grade(correct){
     _wordResults.push({ w, answer, correct });
-    _wordIndex++;
-    RenderWordQuestion();
+    NextWord();
   }
   document.getElementById('btnWordRight').onclick = () => Grade(true);
   document.getElementById('btnWordWrong').onclick = () => Grade(false);
@@ -1957,7 +2293,7 @@ function RenderWordReport(){
       <button class="primary" id="btnWordRetry">다시 시험</button>
     </div>
   `;
-  document.getElementById('btnWordRetry').onclick = () => StartWordTest(_wordMode);
+  document.getElementById('btnWordRetry').onclick = () => StartWordTest(_wordCount);
   document.getElementById('btnWordMode').onclick = RenderWordTestStart;
 }
 
